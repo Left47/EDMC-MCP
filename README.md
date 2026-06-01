@@ -33,6 +33,7 @@ The MCP server exposes these tools:
 | `get_materials` | Materials enriched with friendly name, grade (1–5), category, count. Filter by type / min grade / category / search |
 | `get_current_loadout` | Every fitted module on your active ship, with engineering blueprint, grade, experimental effect, and per-stat modifiers |
 | `get_blueprint_requirements` | Engineering blueprints & experimental effects with per-grade material costs, compared against your inventory (need / have / short, and whether you can afford the roll now) |
+| `get_engineer_status` | Engineers with live unlock status (Unlocked + rank, Invited, Known, Unknown) merged with location, access & unlock requirements, specialisations, and max grade |
 | `get_fleet` | Your ships (current + stored, as last seen at a shipyard) |
 | `get_full_snapshot` | The raw snapshot |
 | `refresh_reference_data` | Re-download the materials & blueprint reference data (run if the game adds new content the tools don't recognise) |
@@ -155,6 +156,8 @@ With Elite Dangerous **and** EDMarketConnector running, ask Claude:
 - *"I want to roll Dirty Drive Tuning grade 5 — do I have the materials?"* (uses `get_blueprint_requirements`)
 - *"Which Power Distributor blueprints can I fully afford right now?"*
 - *"For my current FSD, what would the next grade of Increased Range cost me?"*
+- *"Which engineers do Power Distributor mods, and which have I unlocked?"* (uses `get_engineer_status`)
+- *"What do I still need to unlock the engineers I haven't got yet?"*
 - *"What shield-related encoded data am I low on?"*
 
 ## Updating

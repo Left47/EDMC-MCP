@@ -1,0 +1,497 @@
+{
+ "Bill Turner": {
+  "access": "Become Friendly with the Alliance",
+  "base": "Turner Metallics Inc",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Auto Field-Maintenance Unit",
+   "Fuel Scoop",
+   "Kill Warrant Scanner",
+   "Life Support",
+   "Manifest Scanner",
+   "Plasma Accelerator",
+   "Refinery",
+   "Sensors",
+   "Surface Scanner",
+   "Wake Scanner"
+  ],
+  "system": "Alioth",
+  "unlock": "Donate 50 Bromellite"
+ },
+ "Broo Tarquin": {
+  "access": "Achieve combat rank of Competent",
+  "base": "Broo's Legacy",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Beam Laser",
+   "Burst Laser",
+   "Pulse Laser"
+  ],
+  "system": "Muang",
+  "unlock": "Donate 50 Fujin Tea"
+ },
+ "Chloe Sedesi": {
+  "access": "Travel 5,000 Ly from your career start",
+  "base": "Cinder Dock",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Frame Shift Drive",
+   "Thrusters"
+  ],
+  "system": "Shenve",
+  "unlock": "Donate 25 Sensor Fragments"
+ },
+ "Colonel Bris Dekker": {
+  "access": "Become Friendly with the Federation",
+  "base": "Dekker's Yard",
+  "domain": "ship",
+  "max_grade": 4,
+  "specialisations": [
+   "Frame Shift Drive",
+   "Frame Shift Drive Interdictor"
+  ],
+  "system": "Sol",
+  "unlock": "Donate 1,000,000 CR in combat bonds"
+ },
+ "Didi Vatermann": {
+  "access": "Achieve trading rank of Merchant",
+  "base": "Vatermann LLC",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Shield Booster",
+   "Shield Generator"
+  ],
+  "system": "Leesti",
+  "unlock": "Donate 50 Lavian Brandy"
+ },
+ "Domino Green": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Elvira Martuuk": {
+  "access": "Travel 300 Ly from your career start",
+  "base": "Long Sight Base",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Frame Shift Drive",
+   "Shield Cell Bank",
+   "Shield Generator",
+   "Thrusters"
+  ],
+  "system": "Khun",
+  "unlock": "Donate 3 Soontill Relics"
+ },
+ "Etienne Dorn": {
+  "access": "Achieve trading rank of Dealer",
+  "base": "Kaku Plant",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Kill Warrant Scanner",
+   "Life Support",
+   "Manifest Scanner",
+   "Plasma Accelerator",
+   "Power Distributor",
+   "Power Plant",
+   "Rail Gun",
+   "Sensors",
+   "Surface Scanner",
+   "Wake Scanner"
+  ],
+  "system": "Los",
+  "unlock": "Donate 25 Occupied Escape Pods"
+ },
+ "Felicity Farseer": {
+  "access": "Achieve exploration rank of Scout",
+  "base": "Farseer Inc.",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Frame Shift Drive",
+   "Frame Shift Drive Interdictor",
+   "Power Plant",
+   "Sensors",
+   "Shield Booster",
+   "Surface Scanner",
+   "Thrusters"
+  ],
+  "system": "Deciat",
+  "unlock": "Donate 1 Meta-Alloy"
+ },
+ "Hera Tani": {
+  "access": "Achieve Empire rank of Outsider",
+  "base": "The Jet's Hole",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Power Distributor",
+   "Power Plant",
+   "Sensors",
+   "Surface Scanner"
+  ],
+  "system": "Kuwemaki",
+  "unlock": "Donate 50 Kamitra Cigars"
+ },
+ "Hero Ferrari": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Jude Navarro": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Juri Ishmaak": {
+  "access": "Earn 50 combat bonds",
+  "base": "Pater's Memorial",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Mine Launcher",
+   "Missile Rack",
+   "Sensors",
+   "Surface Scanner",
+   "Torpedo Pylon"
+  ],
+  "system": "Giryak",
+  "unlock": "Donate 100,000 CR in combat bonds"
+ },
+ "Kit Fowler": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Lei Cheung": {
+  "access": "Use 50 different commodity markets",
+  "base": "Trader's Rest",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Sensors",
+   "Shield Booster",
+   "Shield Generator",
+   "Surface Scanner"
+  ],
+  "system": "Laksak",
+  "unlock": "Donate 200 Gold"
+ },
+ "Liz Ryder": {
+  "access": "Become Friendly with Eurybia Blue Mafia",
+  "base": "Demolition Unlimited",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Armour",
+   "Hull Reinforcement Package",
+   "Mine Launcher",
+   "Missile Rack",
+   "Torpedo Pylon"
+  ],
+  "system": "Eurybia",
+  "unlock": "Donate 200 Landmines"
+ },
+ "Lori Jameson": {
+  "access": "Achieve combat rank of Dangerous",
+  "base": "Jameson Base",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Auto Field-Maintenance Unit",
+   "Fuel Scoop",
+   "Kill Warrant Scanner",
+   "Life Support",
+   "Manifest Scanner",
+   "Refinery",
+   "Sensors",
+   "Shield Cell Bank",
+   "Surface Scanner",
+   "Wake Scanner"
+  ],
+  "system": "Shinrarta Dezhra",
+  "unlock": "Donate 25 Kongga Ale"
+ },
+ "Marco Qwent": {
+  "access": "Get an invitation from Sirius Corporation",
+  "base": "Qwent Research Base",
+  "domain": "ship",
+  "max_grade": 4,
+  "specialisations": [
+   "Power Distributor",
+   "Power Plant"
+  ],
+  "system": "Sirius",
+  "unlock": "Donate 25 Modular Terminals"
+ },
+ "Marsha Hicks": {
+  "access": "Achieve trading/exploration rank",
+  "base": "The Watney Recreation Centre",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Cannon",
+   "Collector Limpet Controller",
+   "Fragment Cannon",
+   "Fuel Scoop",
+   "Fuel Transfer Limpet Controller",
+   "Hatch Breaker Limpet Controller",
+   "Multi-cannon",
+   "Prospector Limpet Controller",
+   "Refinery"
+  ],
+  "system": "Tir",
+  "unlock": "Donate 10 Osmium"
+ },
+ "Mel Brandon": {
+  "access": "Become Friendly with the Colonia Council",
+  "base": "The Brig",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Beam Laser",
+   "Burst Laser",
+   "Frame Shift Drive",
+   "Frame Shift Drive Interdictor",
+   "Pulse Laser",
+   "Shield Booster",
+   "Shield Cell Bank",
+   "Shield Generator",
+   "Thrusters"
+  ],
+  "system": "Luchtaine",
+  "unlock": "Donate 100,000 CR in bounty vouchers"
+ },
+ "Oden Geiger": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Petra Olmanova": {
+  "access": "Achieve combat rank",
+  "base": "Sanderling's Hideaway",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Armour",
+   "Auto Field-Maintenance Unit",
+   "Chaff Launcher",
+   "Electronic Countermeasure",
+   "Heat Sink Launcher",
+   "Hull Reinforcement Package",
+   "Mine Launcher",
+   "Missile Rack",
+   "Point Defence",
+   "Torpedo Pylon"
+  ],
+  "system": "Asura",
+  "unlock": "Donate 200 Progenitor Cells"
+ },
+ "Professor Palin": {
+  "access": "Travel 5,000 Ly from your career start",
+  "base": "Abel Laboratory",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Frame Shift Drive",
+   "Thrusters"
+  ],
+  "system": "Arque",
+  "unlock": "Donate 25 Sensor Fragments"
+ },
+ "Ram Tah": {
+  "access": "Achieve exploration rank of Surveyor",
+  "base": "Phoenix Base",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Chaff Launcher",
+   "Collector Limpet Controller",
+   "Electronic Countermeasure",
+   "Fuel Transfer Limpet Controller",
+   "Hatch Breaker Limpet Controller",
+   "Heat Sink Launcher",
+   "Point Defence",
+   "Prospector Limpet Controller"
+  ],
+  "system": "Meene",
+  "unlock": "Donate 50 Classified Scan Databanks"
+ },
+ "Selene Jean": {
+  "access": "Mine 500 t of ore",
+  "base": "Prospector's Rest",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Armour",
+   "Hull Reinforcement Package"
+  ],
+  "system": "Kuk",
+  "unlock": "Donate 10 Painite"
+ },
+ "Terra Velasquez": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "The Dweller": {
+  "access": "Use 5 different black markets",
+  "base": "Black Hide",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Beam Laser",
+   "Burst Laser",
+   "Power Distributor",
+   "Pulse Laser"
+  ],
+  "system": "Wyrd",
+  "unlock": "Donate 500,000 CR"
+ },
+ "The Sarge": {
+  "access": "Achieve Federal Navy rank of Midshipman",
+  "base": "The Beach",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Cannon",
+   "Collector Limpet Controller",
+   "Fuel Transfer Limpet Controller",
+   "Hatch Breaker Limpet Controller",
+   "Prospector Limpet Controller",
+   "Rail Gun"
+  ],
+  "system": "Beta-3 Tucani",
+  "unlock": "Donate 50 Aberrant Shield Pattern Analysis"
+ },
+ "Tiana Fortune": {
+  "access": "Become Friendly with the Empire",
+  "base": "Fortune's Loss",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Collector Limpet Controller",
+   "Frame Shift Drive Interdictor",
+   "Fuel Transfer Limpet Controller",
+   "Hatch Breaker Limpet Controller",
+   "Kill Warrant Scanner",
+   "Manifest Scanner",
+   "Prospector Limpet Controller",
+   "Sensors",
+   "Surface Scanner",
+   "Wake Scanner"
+  ],
+  "system": "Achenar",
+  "unlock": "Donate 50 Decoded Emission Data"
+ },
+ "Tod McQuinn": {
+  "access": "Earn 15 bounty vouchers",
+  "base": "Trophy Camp",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Cannon",
+   "Fragment Cannon",
+   "Multi-cannon",
+   "Rail Gun"
+  ],
+  "system": "Wolf 397",
+  "unlock": "Donate 100,000 CR in bounty vouchers"
+ },
+ "Uma Laszlo": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Wellington Beck": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Yarden Bond": {
+  "access": null,
+  "base": null,
+  "domain": "odyssey",
+  "max_grade": 0,
+  "specialisations": [
+   "Suit",
+   "Weapon"
+  ],
+  "system": null,
+  "unlock": null
+ },
+ "Zacariah Nemo": {
+  "access": "Get an invitation from the Party of Yoru",
+  "base": "Nemo Cyber Party Base",
+  "domain": "ship",
+  "max_grade": 5,
+  "specialisations": [
+   "Fragment Cannon",
+   "Multi-cannon",
+   "Plasma Accelerator"
+  ],
+  "system": "Yoru",
+  "unlock": "Donate 25 Xihe Companions"
+ }
+}

@@ -29,6 +29,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_STATE_FILE = os.path.join(os.path.expanduser("~"), ".elite-dangerous-claude", "state.json")
 MATERIALS_REF_FILE = os.path.join(HERE, "materials_ref.json")
 BLUEPRINTS_REF_FILE = os.path.join(HERE, "blueprints_ref.json")
+ENGINEERS_REF_FILE = os.path.join(HERE, "engineers_ref.json")
 
 mcp = FastMCP("elite-dangerous")
 
@@ -47,6 +48,7 @@ def _load_json_file(path: str, fallback: Any) -> Any:
 
 _MAT_REF = _load_json_file(MATERIALS_REF_FILE, {})
 _BP_REF = _load_json_file(BLUEPRINTS_REF_FILE, [])
+_ENG_REF = _load_json_file(ENGINEERS_REF_FILE, {})
 
 
 def _load_snapshot() -> dict[str, Any]:
@@ -326,16 +328,84 @@ def get_blueprint_requirements(
 
 
 @mcp.tool()
+def get_engineer_status(
+    module_type: Optional[str] = None,
+    status: Optional[str] = None,
+    domain: Optional[str] = None,
+) -> dict[str, Any]:
+    """Engineers, combining live unlock status (from the journal) with reference
+    data: location (system + base), how to gain access, the unlock requirement,
+    what they specialise in, and the max blueprint grade they offer. Use this to
+    plan which engineers to unlock or rank up for a given module.
+
+    Live status is one of: Unlocked (with rank 1-5 + rank_progress), Invited,
+    Known, or Unknown (not yet discovered). Location/unlock details are reference
+    data — verify in-game, as requirements can change.
+
+    Args:
+        module_type: only engineers who work on this module, e.g. 'Power
+            Distributor', 'Frame Shift Drive', 'Thrusters' (substring match).
+        status: filter by live status. Use 'unlocked', 'locked' (anything not
+            yet unlocked), 'invited', 'known', or 'unknown'.
+        domain: 'ship' for module engineers, 'odyssey' for suit/weapon engineers.
+    """
+    snap = _load_snapshot()
+    live = snap.get("engineers", {})  # name -> {status, rank?, rank_progress?}
+    want = (status or "").lower()
+
+    results = []
+    for name in sorted(set(_ENG_REF) | set(live)):
+        ref = _ENG_REF.get(name, {})
+        st = live.get(name) or {"status": "Unknown"}
+        eff = st.get("status", "Unknown")
+
+        if module_type and not any(
+                module_type.lower() in (m or "").lower()
+                for m in ref.get("specialisations", [])):
+            continue
+        if domain and ref.get("domain") != domain.lower():
+            continue
+        if want:
+            is_unlocked = eff == "Unlocked"
+            if want == "locked" and is_unlocked:
+                continue
+            if want != "locked" and eff.lower() != want:
+                continue
+
+        results.append({
+            "engineer": name,
+            "status": eff,
+            "rank": st.get("rank"),
+            "rank_progress": st.get("rank_progress"),
+            "system": ref.get("system"),
+            "base": ref.get("base"),
+            "access": ref.get("access"),
+            "unlock": ref.get("unlock"),
+            "max_grade": ref.get("max_grade"),
+            "specialisations": ref.get("specialisations", []),
+            "domain": ref.get("domain"),
+        })
+
+    counts: dict[str, int] = {}
+    for r in results:
+        counts[r["status"]] = counts.get(r["status"], 0) + 1
+    return {"count": len(results), "status_counts": counts, "engineers": results,
+            "note": "Location/unlock data is reference-only; verify in-game.",
+            "data_age_seconds": snap.get("_age_seconds")}
+
+
+@mcp.tool()
 def refresh_reference_data() -> dict[str, Any]:
     """Re-download the materials and engineering blueprint reference data from
     the community sources and rebuild the bundled reference files. Use this if
     the game has added new materials, blueprints, or experimental effects that
     the other tools don't yet recognise. Requires internet access."""
-    global _MAT_REF, _BP_REF
+    global _MAT_REF, _BP_REF, _ENG_REF
     import update_references  # local module; stdlib-only, network at call time
     summary = update_references.update_references(HERE)
     _MAT_REF = _load_json_file(MATERIALS_REF_FILE, {})
     _BP_REF = _load_json_file(BLUEPRINTS_REF_FILE, [])
+    _ENG_REF = _load_json_file(ENGINEERS_REF_FILE, {})
     return {"status": "refreshed", **summary}
 
 

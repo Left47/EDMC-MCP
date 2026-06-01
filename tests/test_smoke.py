@@ -81,6 +81,10 @@ STATE = {
                      "gridresistors": 250, "militarysupercapacitors": 5},
     "Encoded": {"shielddensityreports": 150, "shieldcyclerecordings": 300,
                 "scandatabanks": 5},
+    # EDMC stores unlocked engineers as (Rank, RankProgress) tuples, others as
+    # a status string.
+    "Engineers": {"The Dweller": (5, 0), "Etienne Dorn": (3, 45),
+                  "Felicity Farseer": "Known"},
     "Cargo": {}, "SystemName": "Shinrarta Dezhra", "StationName": "Jameson Memorial",
     "StationType": "Coriolis", "IsDocked": True, "OnFoot": False, "Body": None,
 }
@@ -163,6 +167,30 @@ load.CONNECTOR.snapshot["materials"] = {"raw": {}, "manufactured": {}, "encoded"
 load.CONNECTOR._flush()
 bp_none = srv.get_blueprint_requirements("engine focused", grade=5, only_affordable=True)
 check("only_affordable filters out unaffordable", bp_none["count"] == 0, str(bp_none["count"]))
+
+# --- Engineer status ---------------------------------------------------------
+# Restore materials so the snapshot reflects the engineer data we set.
+load.CONNECTOR.update("CMDR Jim", "Shinrarta Dezhra", "Jameson Memorial",
+                      {"event": "EngineerProgress", "timestamp": "2026-06-01T12:10:00Z"}, STATE)
+load.CONNECTOR._flush()
+eng = srv.get_engineer_status()
+by_eng = {e["engineer"]: e for e in eng["engineers"]}
+check("engineer unlocked status + rank", by_eng["The Dweller"]["status"] == "Unlocked"
+      and by_eng["The Dweller"]["rank"] == 5, str(by_eng.get("The Dweller")))
+check("engineer rank progress", by_eng["Etienne Dorn"]["rank_progress"] == 45)
+check("engineer known status", by_eng["Felicity Farseer"]["status"] == "Known")
+check("engineer reference merged (location)", by_eng["The Dweller"]["system"] == "Wyrd"
+      and by_eng["The Dweller"]["unlock"] == "Donate 500,000 CR")
+check("undiscovered engineer is Unknown", by_eng["Lori Jameson"]["status"] == "Unknown")
+
+pd_eng = srv.get_engineer_status(module_type="Power Distributor")
+pd_names = {e["engineer"] for e in pd_eng["engineers"]}
+check("engineer module filter", {"The Dweller", "Etienne Dorn"} <= pd_names
+      and "Liz Ryder" not in pd_names, str(sorted(pd_names)))
+unlocked = srv.get_engineer_status(status="unlocked")
+check("engineer status filter (unlocked)",
+      all(e["status"] == "Unlocked" for e in unlocked["engineers"])
+      and len(unlocked["engineers"]) == 2, str(len(unlocked["engineers"])))
 
 print()
 if failures:

@@ -34,7 +34,7 @@ if not hasattr(config, "get_bool"):
     config.get_bool = lambda key, default=False: bool(config.getint(key))  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -81,6 +81,23 @@ MATERIAL_BUCKETS = {
 def default_state_path() -> str:
     """Default snapshot location, shared with the MCP server's default."""
     return os.path.join(os.path.expanduser("~"), ".elite-dangerous-claude", "state.json")
+
+
+def _normalize_engineers(raw: dict[str, Any]) -> dict[str, Any]:
+    """EDMC stores state['Engineers'] as name -> (Rank, RankProgress) once an
+    engineer is unlocked, or a status string ('Known'/'Invited'/...) otherwise.
+    Normalise both into a uniform dict for the snapshot."""
+    out: dict[str, Any] = {}
+    for name, val in raw.items():
+        if isinstance(val, (tuple, list)):
+            out[name] = {
+                "status": "Unlocked",
+                "rank": val[0] if len(val) > 0 else None,
+                "rank_progress": val[1] if len(val) > 1 else 0,
+            }
+        else:
+            out[name] = {"status": val}
+    return out
 
 
 class _Connector:
@@ -231,6 +248,7 @@ class _Connector:
             }
 
             snap["cargo"] = dict(state.get("Cargo") or {})
+            snap["engineers"] = _normalize_engineers(state.get("Engineers") or {})
 
         self.mark_dirty()
 

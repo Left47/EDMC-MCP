@@ -69,7 +69,8 @@ class _Connector:
     # -- lifecycle ------------------------------------------------------------
     def start(self) -> None:
         self.path = config.get_str(CONFIG_PATH_KEY) or default_state_path()
-        self.enabled = config.get_bool(CONFIG_ENABLED_KEY) if config.get_str(CONFIG_ENABLED_KEY) is not None else True
+        # Enabled by default; persisted as int (1/0) by prefs_changed.
+        self.enabled = bool(config.get_bool(CONFIG_ENABLED_KEY, default=True))
         self._thread = threading.Thread(target=self._writer_loop, name="EDClaudeWriter", daemon=True)
         self._thread.start()
 
@@ -223,9 +224,22 @@ def plugin_stop() -> None:
     logger.info("EDClaudeConnector stopped")
 
 
+def _refresh_status_label() -> None:
+    """Make the main-window label reflect the real enabled state (main thread)."""
+    if _status_label is None:
+        return
+    if CONNECTOR.enabled:
+        _status_label["text"] = "Claude: on"
+        _status_label["foreground"] = "green"
+    else:
+        _status_label["text"] = "Claude: off (enable in Settings)"
+        _status_label["foreground"] = "grey"
+
+
 def plugin_app(parent: tk.Frame) -> tk.Label:
     global _status_label
-    _status_label = tk.Label(parent, text="Claude: ready", foreground="green")
+    _status_label = tk.Label(parent)
+    _refresh_status_label()
     return _status_label
 
 
@@ -251,14 +265,12 @@ def plugin_prefs(parent: nb.Notebook, cmdr: str, is_beta: bool) -> tk.Frame:
 def prefs_changed(cmdr: str, is_beta: bool) -> None:
     if _enabled_var is not None:
         CONNECTOR.enabled = bool(_enabled_var.get())
-        config.set(CONFIG_ENABLED_KEY, _enabled_var.get())
+        config.set(CONFIG_ENABLED_KEY, 1 if _enabled_var.get() else 0)
     if _path_var is not None:
         new_path = _path_var.get().strip() or default_state_path()
         CONNECTOR.path = new_path
         config.set(CONFIG_PATH_KEY, new_path)
-    if _status_label is not None:
-        _status_label["text"] = "Claude: ready" if CONNECTOR.enabled else "Claude: off"
-        _status_label["foreground"] = "green" if CONNECTOR.enabled else "grey"
+    _refresh_status_label()
     CONNECTOR.mark_dirty()
 
 

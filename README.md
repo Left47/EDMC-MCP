@@ -127,6 +127,12 @@ reference from its own directory.
 > On Windows use `"py"` or the full path to `python.exe` as `command`, and
 > **double-backslash** paths (`\\`) or use forward slashes. Restart Claude
 > Desktop after editing.
+>
+> **Microsoft Store version of Claude Desktop?** It's sandboxed and reads its
+> config from a different place:
+> `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json`.
+> Use Claude's **Settings → Developer → Edit Config** to open the exact file it
+> reads. (The `install.bat` installer writes to both locations automatically.)
 
 **Claude Code** (CLI):
 

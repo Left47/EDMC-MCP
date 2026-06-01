@@ -86,18 +86,11 @@ if ($LASTEXITCODE -ne 0) { throw "pip install failed (exit $LASTEXITCODE)" }
 Write-Host "[2/3] MCP dependency installed into $venv" -ForegroundColor Green
 
 # --- 3. Wire up Claude Desktop config ---------------------------------------
+# Claude Desktop comes in two flavours that read DIFFERENT config locations:
+#   * Standalone (.exe) installer:  %APPDATA%\Claude\
+#   * Microsoft Store (MSIX) build: %LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\
+# We write to every Claude config dir we find so it works regardless.
 $serverPath = Join-Path $repo 'mcp\ed_claude_mcp.py'
-$configPath = Join-Path $env:APPDATA 'Claude\claude_desktop_config.json'
-
-if (Test-Path $configPath) {
-    $json = Get-Content -Raw $configPath | ConvertFrom-Json
-} else {
-    New-Item -ItemType Directory -Force -Path (Split-Path $configPath) | Out-Null
-    $json = [PSCustomObject]@{}
-}
-if (-not ($json.PSObject.Properties.Name -contains 'mcpServers')) {
-    $json | Add-Member -NotePropertyName 'mcpServers' -NotePropertyValue ([PSCustomObject]@{})
-}
 
 $server = [PSCustomObject]@{
     command = $venvPy
@@ -107,14 +100,38 @@ if ($StateFile) {
     $server | Add-Member -NotePropertyName 'env' -NotePropertyValue ([PSCustomObject]@{ EDCLAUDE_STATE_FILE = $StateFile })
 }
 
-if ($json.mcpServers.PSObject.Properties.Name -contains 'elite-dangerous') {
-    $json.mcpServers.'elite-dangerous' = $server
-} else {
-    $json.mcpServers | Add-Member -NotePropertyName 'elite-dangerous' -NotePropertyValue $server
-}
+$configDirs = New-Object System.Collections.Generic.List[string]
+$configDirs.Add((Join-Path $env:APPDATA 'Claude'))                       # standalone .exe build
+Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Packages') -Filter 'Claude_*' -Directory -ErrorAction SilentlyContinue |
+    ForEach-Object { $configDirs.Add((Join-Path $_.FullName 'LocalCache\Roaming\Claude')) }  # Store build(s)
 
-$json | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 $configPath
-Write-Host "[3/3] Claude Desktop config updated -> $configPath" -ForegroundColor Green
+$written = @()
+foreach ($dir in $configDirs) {
+    # Only target a Store dir if its package actually exists; always allow the
+    # standalone dir (create it so a not-yet-launched Claude still picks it up).
+    $isStore = $dir -like '*\Packages\*'
+    if ($isStore -and -not (Test-Path (Split-Path (Split-Path (Split-Path $dir))))) { continue }
+
+    $configPath = Join-Path $dir 'claude_desktop_config.json'
+    if (Test-Path $configPath) {
+        $json = Get-Content -Raw $configPath | ConvertFrom-Json
+    } else {
+        New-Item -ItemType Directory -Force -Path $dir | Out-Null
+        $json = [PSCustomObject]@{}
+    }
+    if (-not ($json.PSObject.Properties.Name -contains 'mcpServers')) {
+        $json | Add-Member -NotePropertyName 'mcpServers' -NotePropertyValue ([PSCustomObject]@{})
+    }
+    if ($json.mcpServers.PSObject.Properties.Name -contains 'elite-dangerous') {
+        $json.mcpServers.'elite-dangerous' = $server
+    } else {
+        $json.mcpServers | Add-Member -NotePropertyName 'elite-dangerous' -NotePropertyValue $server
+    }
+    [System.IO.File]::WriteAllText($configPath, ($json | ConvertTo-Json -Depth 10))
+    $written += $configPath
+}
+Write-Host "[3/3] Claude Desktop config updated:" -ForegroundColor Green
+$written | ForEach-Object { Write-Host "        $_" }
 
 Write-Host "`nDone." -ForegroundColor Cyan
 Write-Host "Next:"

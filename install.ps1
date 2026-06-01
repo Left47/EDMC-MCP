@@ -21,6 +21,15 @@ $repo = $PSScriptRoot
 Write-Host "ED Claude Connector installer" -ForegroundColor Cyan
 Write-Host "Repo: $repo`n"
 
+# Refuse to run from a temporary/zip-preview location. Windows lets you "open"
+# a .zip and run files straight from a Temp mount that is later deleted -- the
+# venv and server we set up would vanish and Claude would fail to launch them.
+if ($repo -match '\\Temp\\' -or $repo -match '\.zip') {
+    throw "It looks like you're running this from inside a zipped/temporary folder:`n  $repo`n`n" +
+          "Please EXTRACT the ZIP to a permanent location first (e.g. " +
+          "$HOME\Documents\EDMC-MCP), then run install.bat from there."
+}
+
 # --- 1. Install the EDMC plugin ---------------------------------------------
 $pluginSrc  = Join-Path $repo 'plugin\EDClaudeConnector'
 $pluginRoot = Join-Path $env:LOCALAPPDATA 'EDMarketConnector\plugins'
@@ -36,23 +45,45 @@ New-Item -ItemType Directory -Force -Path $pluginDest | Out-Null
 Copy-Item -Path (Join-Path $pluginSrc '*') -Destination $pluginDest -Recurse -Force
 Write-Host "[1/3] Plugin installed -> $pluginDest" -ForegroundColor Green
 
-# --- 2. Locate Python and install the MCP dependency ------------------------
-$py = $null
-foreach ($cand in @('py', 'python', 'python3')) {
-    $cmd = Get-Command $cand -ErrorAction SilentlyContinue
-    if ($cmd) { $py = $cmd; break }
+# --- 2. Locate a WORKING Python and install the MCP dependency --------------
+# Get-Command can match a Microsoft Store alias that isn't really runnable, so
+# each candidate is verified by actually invoking `--version`.
+function Test-Python($exe, $pre) {
+    try {
+        & $exe @pre --version 2>&1 | Out-Null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
 }
-if (-not $py) {
-    throw "No Python found on PATH. Install Python 3.10+ (python.org) and re-run."
-}
-if ($py.Name -like 'py*') { $pyExe = 'py'; $pyPre = @('-3') }
-else { $pyExe = $py.Source; $pyPre = @() }
 
-$req = Join-Path $repo 'mcp\requirements.txt'
+$pyExe = $null; $pyPre = @()
+$candidates = @(
+    @{ exe = 'py';      pre = @('-3') },
+    @{ exe = 'python';  pre = @() },
+    @{ exe = 'python3'; pre = @() }
+)
+foreach ($c in $candidates) {
+    $cmd = Get-Command $c.exe -ErrorAction SilentlyContinue
+    if (-not $cmd) { continue }
+    # Prefer the resolved full path; bare names can hit PATH/alias quirks.
+    $exe = if ($cmd.Source) { $cmd.Source } else { $c.exe }
+    if (Test-Python $exe $c.pre) { $pyExe = $exe; $pyPre = $c.pre; break }
+}
+if (-not $pyExe) {
+    throw "No working Python 3.10+ found. Install it from https://python.org " +
+          "(tick 'Add python.exe to PATH' during setup), then re-run install.bat."
+}
+
+# A dedicated venv isolates the dependency and avoids polluting system Python.
+$req   = Join-Path $repo 'mcp\requirements.txt'
+$venv  = Join-Path $repo '.venv'
+$venvPy = Join-Path $venv 'Scripts\python.exe'
 Write-Host "Using Python: $pyExe $($pyPre -join ' ')"
-& $pyExe @pyPre -m pip install --user -r $req
+& $pyExe @pyPre -m venv $venv
+if ($LASTEXITCODE -ne 0) { throw "venv creation failed (exit $LASTEXITCODE)" }
+& $venvPy -m pip install --upgrade pip
+& $venvPy -m pip install -r $req
 if ($LASTEXITCODE -ne 0) { throw "pip install failed (exit $LASTEXITCODE)" }
-Write-Host "[2/3] MCP dependency installed" -ForegroundColor Green
+Write-Host "[2/3] MCP dependency installed into $venv" -ForegroundColor Green
 
 # --- 3. Wire up Claude Desktop config ---------------------------------------
 $serverPath = Join-Path $repo 'mcp\ed_claude_mcp.py'
@@ -69,8 +100,8 @@ if (-not ($json.PSObject.Properties.Name -contains 'mcpServers')) {
 }
 
 $server = [PSCustomObject]@{
-    command = $pyExe
-    args    = @($pyPre + $serverPath)
+    command = $venvPy
+    args    = @($serverPath)
 }
 if ($StateFile) {
     $server | Add-Member -NotePropertyName 'env' -NotePropertyValue ([PSCustomObject]@{ EDCLAUDE_STATE_FILE = $StateFile })

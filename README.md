@@ -39,21 +39,29 @@ The MCP server exposes these tools:
 
 The fastest path — does all three steps below automatically:
 
-1. Download and extract this repo (green **Code → Download ZIP**, or
-   `git clone https://github.com/Left47/EDMC-MCP`).
-2. Double-click **`install.bat`**.
+1. **Install Python 3.10+** from [python.org](https://www.python.org/downloads/)
+   if you don't have it — **tick "Add python.exe to PATH"** in the installer.
+2. Download this repo (green **Code → Download ZIP**) and **extract it to a
+   permanent folder** — e.g. `Documents\EDMC-MCP`. Don't run it from inside the
+   Windows zip preview; that's a temporary folder that gets deleted (the
+   installer will refuse if you try).
+3. Open the extracted folder and double-click **`install.bat`**.
 
-It copies the plugin into EDMC, `pip install`s the MCP dependency, and adds the
-`elite-dangerous` server to your Claude Desktop config (merging — it won't touch
-other MCP servers). Then restart EDMarketConnector and Claude Desktop.
+It copies the plugin into EDMC, creates a `.venv` and installs the MCP
+dependency into it, and adds the `elite-dangerous` server to your Claude Desktop
+config (merging — it won't touch other MCP servers). Then restart
+EDMarketConnector and Claude Desktop.
+
+> Keep the extracted folder where it is after installing — Claude launches the
+> server from there.
 
 > Just want the EDMC plugin (no Claude Desktop wiring)? Grab
 > **`EDClaudeConnector.zip`** from the
 > [latest release](https://github.com/Left47/EDMC-MCP/releases/latest) and
 > extract the `EDClaudeConnector` folder into your EDMC plugins directory.
 
-For macOS/Linux, or to understand what the installer does, follow the manual
-steps below.
+On Linux (running the game via Proton/Steam Play), run `./install.sh` instead.
+To understand what the installers do, follow the manual steps below.
 
 ## Install (manual)
 
@@ -63,7 +71,6 @@ EDMC bundles its own Python, so the plugin needs **no pip installs**.
 
 1. Find your EDMC plugins folder: in EDMarketConnector, **File → Settings →
    Plugins → "Open"**. (Defaults: Windows `%LOCALAPPDATA%\EDMarketConnector\plugins`,
-   macOS `~/Library/Application Support/EDMarketConnector/plugins`,
    Linux `~/.config/EDMarketConnector/plugins`.)
 2. Copy the **`EDClaudeConnector`** folder (the one containing `load.py`) into
    that plugins folder.
@@ -75,21 +82,24 @@ The snapshot is written to `~/.elite-dangerous-claude/state.json` by default
 
 ### 2. The MCP server
 
-Needs your own Python **3.10+** (separate from EDMC's bundled one).
+Needs your own Python **3.10+** (separate from EDMC's bundled one). Use a venv
+so you don't hit PEP 668 "externally-managed-environment" errors on Linux:
 
 ```bash
-cd mcp
-pip install -r requirements.txt
+python -m venv .venv
+.venv/Scripts/python -m pip install -r mcp/requirements.txt   # Windows
+# Linux:  .venv/bin/python -m pip install -r mcp/requirements.txt
 ```
 
-Keep `ed_claude_mcp.py` and `materials_ref.json` together — the server loads the
+Point Claude's `command` at that venv's Python (paths below). Keep
+`ed_claude_mcp.py` and `materials_ref.json` together — the server loads the
 reference from its own directory.
 
 ### 3. Point Claude at the server
 
 **Claude Desktop** — edit `claude_desktop_config.json` (Windows:
-`%APPDATA%\Claude\claude_desktop_config.json`, macOS:
-`~/Library/Application Support/Claude/claude_desktop_config.json`):
+`%APPDATA%\Claude\claude_desktop_config.json`, Linux:
+`~/.config/Claude/claude_desktop_config.json`):
 
 ```json
 {

@@ -35,12 +35,24 @@ The MCP server exposes these tools:
 | `get_fleet` | Your ships (current + stored, as last seen at a shipyard) |
 | `get_full_snapshot` | The raw snapshot |
 
+## Prerequisites
+
+- **[Elite Dangerous](https://www.elitedangerous.com/)** and
+  **[EDMarketConnector](https://github.com/EDCD/EDMarketConnector/releases)**
+  installed (Windows, or Linux via Proton/Steam Play).
+- **[Claude Desktop](https://claude.ai/download)** (or Claude Code).
+- **Python 3.10 or newer**, for the MCP server. Download it from
+  [python.org/downloads](https://www.python.org/downloads/) and, on Windows,
+  **tick "Add python.exe to PATH"** in the installer. Verify with `python --version`
+  (or `py -3 --version`). This is separate from the Python that EDMC bundles —
+  the plugin itself needs no Python install.
+
 ## Quick install (Windows)
 
 The fastest path — does all three steps below automatically:
 
-1. **Install Python 3.10+** from [python.org](https://www.python.org/downloads/)
-   if you don't have it — **tick "Add python.exe to PATH"** in the installer.
+1. Make sure the **prerequisites above** are installed (especially Python, with
+   "Add to PATH" ticked).
 2. Download this repo (green **Code → Download ZIP**) and **extract it to a
    permanent folder** — e.g. `Documents\EDMC-MCP`. Don't run it from inside the
    Windows zip preview; that's a temporary folder that gets deleted (the

@@ -1,0 +1,852 @@
+{
+ "adaptiveencryptors": {
+  "category": "Encryption Files",
+  "grade": 5,
+  "name": "Adaptive Encryptors Capture",
+  "type": "Encoded"
+ },
+ "ancientbiologicaldata": {
+  "category": null,
+  "grade": 4,
+  "name": "Pattern Alpha Obelisk Data",
+  "type": "Encoded"
+ },
+ "ancientculturaldata": {
+  "category": null,
+  "grade": 4,
+  "name": "Pattern Beta Obelisk Data",
+  "type": "Encoded"
+ },
+ "ancienthistoricaldata": {
+  "category": null,
+  "grade": 4,
+  "name": "Pattern Gamma Obelisk Data",
+  "type": "Encoded"
+ },
+ "ancientlanguagedata": {
+  "category": null,
+  "grade": 4,
+  "name": "Pattern Delta Obelisk Data",
+  "type": "Encoded"
+ },
+ "ancienttechnologicaldata": {
+  "category": null,
+  "grade": 4,
+  "name": "Pattern Epsilon Obelisk Data",
+  "type": "Encoded"
+ },
+ "antimony": {
+  "category": null,
+  "grade": 4,
+  "name": "Antimony",
+  "raw_category": 7,
+  "type": "Raw"
+ },
+ "archivedemissiondata": {
+  "category": "Emission Data",
+  "grade": 2,
+  "name": "Irregular Emission Data",
+  "type": "Encoded"
+ },
+ "arsenic": {
+  "category": null,
+  "grade": 2,
+  "name": "Arsenic",
+  "raw_category": 6,
+  "type": "Raw"
+ },
+ "basicconductors": {
+  "category": "Conductive",
+  "grade": 1,
+  "name": "Basic Conductors",
+  "type": "Manufactured"
+ },
+ "biotechconductors": {
+  "category": "Conductive",
+  "grade": 5,
+  "name": "Biotech Conductors",
+  "type": "Manufactured"
+ },
+ "boron": {
+  "category": null,
+  "grade": 3,
+  "name": "Boron",
+  "raw_category": 7,
+  "type": "Raw"
+ },
+ "bulkscandata": {
+  "category": "Data Archives",
+  "grade": 1,
+  "name": "Anomalous Bulk Scan Data",
+  "type": "Encoded"
+ },
+ "cadmium": {
+  "category": null,
+  "grade": 3,
+  "name": "Cadmium",
+  "raw_category": 3,
+  "type": "Raw"
+ },
+ "carbon": {
+  "category": null,
+  "grade": 1,
+  "name": "Carbon",
+  "raw_category": 1,
+  "type": "Raw"
+ },
+ "chemicaldistillery": {
+  "category": "Chemical",
+  "grade": 3,
+  "name": "Chemical Distillery",
+  "type": "Manufactured"
+ },
+ "chemicalmanipulators": {
+  "category": "Chemical",
+  "grade": 4,
+  "name": "Chemical Manipulators",
+  "type": "Manufactured"
+ },
+ "chemicalprocessors": {
+  "category": "Chemical",
+  "grade": 2,
+  "name": "Chemical Processors",
+  "type": "Manufactured"
+ },
+ "chemicalstorageunits": {
+  "category": "Chemical",
+  "grade": 1,
+  "name": "Chemical Storage Units",
+  "type": "Manufactured"
+ },
+ "chromium": {
+  "category": null,
+  "grade": 2,
+  "name": "Chromium",
+  "raw_category": 2,
+  "type": "Raw"
+ },
+ "classifiedscandata": {
+  "category": "Data Archives",
+  "grade": 5,
+  "name": "Classified Scan Fragment",
+  "type": "Encoded"
+ },
+ "compactcomposites": {
+  "category": "Composite",
+  "grade": 1,
+  "name": "Compact Composites",
+  "type": "Manufactured"
+ },
+ "compactemissionsdata": {
+  "category": "Emission Data",
+  "grade": 5,
+  "name": "Abnormal Compact Emissions Data",
+  "type": "Encoded"
+ },
+ "compoundshielding": {
+  "category": "Shielding",
+  "grade": 4,
+  "name": "Compound Shielding",
+  "type": "Manufactured"
+ },
+ "conductiveceramics": {
+  "category": "Conductive",
+  "grade": 3,
+  "name": "Conductive Ceramics",
+  "type": "Manufactured"
+ },
+ "conductivecomponents": {
+  "category": "Conductive",
+  "grade": 2,
+  "name": "Conductive Components",
+  "type": "Manufactured"
+ },
+ "conductivepolymers": {
+  "category": "Conductive",
+  "grade": 4,
+  "name": "Conductive Polymers",
+  "type": "Manufactured"
+ },
+ "configurablecomponents": {
+  "category": "Mechanical Components",
+  "grade": 4,
+  "name": "Configurable Components",
+  "type": "Manufactured"
+ },
+ "consumerfirmware": {
+  "category": "Encoded Firmware",
+  "grade": 2,
+  "name": "Modified Consumer Firmware",
+  "type": "Encoded"
+ },
+ "crystalshards": {
+  "category": "Crystals",
+  "grade": 1,
+  "name": "Crystal Shards",
+  "type": "Manufactured"
+ },
+ "dataminedwake": {
+  "category": "Wake Scans",
+  "grade": 5,
+  "name": "Datamined Wake Exceptions",
+  "type": "Encoded"
+ },
+ "decodedemissiondata": {
+  "category": "Emission Data",
+  "grade": 4,
+  "name": "Decoded Emission Data",
+  "type": "Encoded"
+ },
+ "disruptedwakeechoes": {
+  "category": "Wake Scans",
+  "grade": 1,
+  "name": "Atypical Disrupted Wake Echoes",
+  "type": "Encoded"
+ },
+ "electrochemicalarrays": {
+  "category": "Capacitors",
+  "grade": 3,
+  "name": "Electrochemical Arrays",
+  "type": "Manufactured"
+ },
+ "embeddedfirmware": {
+  "category": "Encoded Firmware",
+  "grade": 5,
+  "name": "Modified Embedded Firmware",
+  "type": "Encoded"
+ },
+ "emissiondata": {
+  "category": "Emission Data",
+  "grade": 3,
+  "name": "Unexpected Emission Data",
+  "type": "Encoded"
+ },
+ "encodedscandata": {
+  "category": "Data Archives",
+  "grade": 4,
+  "name": "Divergent Scan Data",
+  "type": "Encoded"
+ },
+ "encryptedfiles": {
+  "category": "Encryption Files",
+  "grade": 1,
+  "name": "Unusual Encrypted Files",
+  "type": "Encoded"
+ },
+ "encryptionarchives": {
+  "category": "Encryption Files",
+  "grade": 4,
+  "name": "Atypical Encryption Archives",
+  "type": "Encoded"
+ },
+ "encryptioncodes": {
+  "category": "Encryption Files",
+  "grade": 2,
+  "name": "Tagged Encryption Codes",
+  "type": "Encoded"
+ },
+ "exquisitefocuscrystals": {
+  "category": "Crystals",
+  "grade": 5,
+  "name": "Exquisite Focus Crystals",
+  "type": "Manufactured"
+ },
+ "fedcorecomposites": {
+  "category": "Composite",
+  "grade": 5,
+  "name": "Core Dynamics Composites",
+  "type": "Manufactured"
+ },
+ "fedproprietarycomposites": {
+  "category": "Composite",
+  "grade": 4,
+  "name": "Proprietary Composites",
+  "type": "Manufactured"
+ },
+ "filamentcomposites": {
+  "category": "Composite",
+  "grade": 2,
+  "name": "Filament Composites",
+  "type": "Manufactured"
+ },
+ "focuscrystals": {
+  "category": "Crystals",
+  "grade": 3,
+  "name": "Focus Crystals",
+  "type": "Manufactured"
+ },
+ "fsdtelemetry": {
+  "category": "Wake Scans",
+  "grade": 2,
+  "name": "Anomalous FSD Telemetry",
+  "type": "Encoded"
+ },
+ "galvanisingalloys": {
+  "category": "Alloys",
+  "grade": 2,
+  "name": "Galvanising Alloys",
+  "type": "Manufactured"
+ },
+ "germanium": {
+  "category": null,
+  "grade": 2,
+  "name": "Germanium",
+  "raw_category": 5,
+  "type": "Raw"
+ },
+ "gridresistors": {
+  "category": "Capacitors",
+  "grade": 1,
+  "name": "Grid Resistors",
+  "type": "Manufactured"
+ },
+ "guardian_moduleblueprint": {
+  "category": null,
+  "grade": 4,
+  "name": "Guardian Module Blueprint Segment",
+  "type": "Encoded"
+ },
+ "guardian_powercell": {
+  "category": null,
+  "grade": 1,
+  "name": "Guardian Power Cell",
+  "type": "Manufactured"
+ },
+ "guardian_powerconduit": {
+  "category": null,
+  "grade": 2,
+  "name": "Guardian Power Conduit",
+  "type": "Manufactured"
+ },
+ "guardian_sentinel_weaponparts": {
+  "category": null,
+  "grade": 3,
+  "name": "Guardian Sentinel Weapon Parts",
+  "type": "Manufactured"
+ },
+ "guardian_sentinel_wreckagecomponents": {
+  "category": null,
+  "grade": 1,
+  "name": "Guardian Sentinel Wreckage Components",
+  "type": "Manufactured"
+ },
+ "guardian_techcomponent": {
+  "category": null,
+  "grade": 3,
+  "name": "Guardian Technology Component",
+  "type": "Manufactured"
+ },
+ "guardian_vesselblueprint": {
+  "category": null,
+  "grade": 5,
+  "name": "Guardian Vessel Blueprint Segment",
+  "type": "Encoded"
+ },
+ "guardian_weaponblueprint": {
+  "category": null,
+  "grade": 4,
+  "name": "Guardian Weapon Blueprint Segment",
+  "type": "Encoded"
+ },
+ "heatconductionwiring": {
+  "category": "Heat",
+  "grade": 1,
+  "name": "Heat Conduction Wiring",
+  "type": "Manufactured"
+ },
+ "heatdispersionplate": {
+  "category": "Heat",
+  "grade": 2,
+  "name": "Heat Dispersion Plate",
+  "type": "Manufactured"
+ },
+ "heatexchangers": {
+  "category": "Heat",
+  "grade": 3,
+  "name": "Heat Exchangers",
+  "type": "Manufactured"
+ },
+ "heatresistantceramics": {
+  "category": "Thermic",
+  "grade": 2,
+  "name": "Heat Resistant Ceramics",
+  "type": "Manufactured"
+ },
+ "heatvanes": {
+  "category": "Heat",
+  "grade": 4,
+  "name": "Heat Vanes",
+  "type": "Manufactured"
+ },
+ "highdensitycomposites": {
+  "category": "Composite",
+  "grade": 3,
+  "name": "High Density Composites",
+  "type": "Manufactured"
+ },
+ "hybridcapacitors": {
+  "category": "Capacitors",
+  "grade": 2,
+  "name": "Hybrid Capacitors",
+  "type": "Manufactured"
+ },
+ "hyperspacetrajectories": {
+  "category": "Wake Scans",
+  "grade": 4,
+  "name": "Eccentric Hyperspace Trajectories",
+  "type": "Encoded"
+ },
+ "imperialshielding": {
+  "category": "Shielding",
+  "grade": 5,
+  "name": "Imperial Shielding",
+  "type": "Manufactured"
+ },
+ "improvisedcomponents": {
+  "category": "Mechanical Components",
+  "grade": 5,
+  "name": "Improvised Components",
+  "type": "Manufactured"
+ },
+ "industrialfirmware": {
+  "category": "Encoded Firmware",
+  "grade": 3,
+  "name": "Cracked Industrial Firmware",
+  "type": "Encoded"
+ },
+ "iron": {
+  "category": null,
+  "grade": 1,
+  "name": "Iron",
+  "raw_category": 4,
+  "type": "Raw"
+ },
+ "lead": {
+  "category": null,
+  "grade": 1,
+  "name": "Lead",
+  "raw_category": 7,
+  "type": "Raw"
+ },
+ "legacyfirmware": {
+  "category": "Encoded Firmware",
+  "grade": 1,
+  "name": "Specialised Legacy Firmware",
+  "type": "Encoded"
+ },
+ "manganese": {
+  "category": null,
+  "grade": 2,
+  "name": "Manganese",
+  "raw_category": 3,
+  "type": "Raw"
+ },
+ "mechanicalcomponents": {
+  "category": "Mechanical Components",
+  "grade": 3,
+  "name": "Mechanical Components",
+  "type": "Manufactured"
+ },
+ "mechanicalequipment": {
+  "category": "Mechanical Components",
+  "grade": 2,
+  "name": "Mechanical Equipment",
+  "type": "Manufactured"
+ },
+ "mechanicalscrap": {
+  "category": "Mechanical Components",
+  "grade": 1,
+  "name": "Mechanical Scrap",
+  "type": "Manufactured"
+ },
+ "mercury": {
+  "category": null,
+  "grade": 3,
+  "name": "Mercury",
+  "raw_category": 6,
+  "type": "Raw"
+ },
+ "militarygradealloys": {
+  "category": "Thermic",
+  "grade": 5,
+  "name": "Military Grade Alloys",
+  "type": "Manufactured"
+ },
+ "militarysupercapacitors": {
+  "category": "Capacitors",
+  "grade": 5,
+  "name": "Military Supercapacitors",
+  "type": "Manufactured"
+ },
+ "molybdenum": {
+  "category": null,
+  "grade": 3,
+  "name": "Molybdenum",
+  "raw_category": 2,
+  "type": "Raw"
+ },
+ "nickel": {
+  "category": null,
+  "grade": 1,
+  "name": "Nickel",
+  "raw_category": 5,
+  "type": "Raw"
+ },
+ "niobium": {
+  "category": null,
+  "grade": 3,
+  "name": "Niobium",
+  "raw_category": 1,
+  "type": "Raw"
+ },
+ "pharmaceuticalisolators": {
+  "category": "Chemical",
+  "grade": 5,
+  "name": "Pharmaceutical Isolators",
+  "type": "Manufactured"
+ },
+ "phasealloys": {
+  "category": "Alloys",
+  "grade": 3,
+  "name": "Phase Alloys",
+  "type": "Manufactured"
+ },
+ "phosphorus": {
+  "category": null,
+  "grade": 1,
+  "name": "Phosphorus",
+  "raw_category": 2,
+  "type": "Raw"
+ },
+ "polonium": {
+  "category": null,
+  "grade": 4,
+  "name": "Polonium",
+  "raw_category": 6,
+  "type": "Raw"
+ },
+ "polymercapacitors": {
+  "category": "Capacitors",
+  "grade": 4,
+  "name": "Polymer Capacitors",
+  "type": "Manufactured"
+ },
+ "precipitatedalloys": {
+  "category": "Thermic",
+  "grade": 3,
+  "name": "Precipitated Alloys",
+  "type": "Manufactured"
+ },
+ "protoheatradiators": {
+  "category": "Heat",
+  "grade": 5,
+  "name": "Proto Heat Radiators",
+  "type": "Manufactured"
+ },
+ "protolightalloys": {
+  "category": "Alloys",
+  "grade": 4,
+  "name": "Proto Light Alloys",
+  "type": "Manufactured"
+ },
+ "protoradiolicalloys": {
+  "category": "Alloys",
+  "grade": 5,
+  "name": "Proto Radiolic Alloys",
+  "type": "Manufactured"
+ },
+ "refinedfocuscrystals": {
+  "category": "Crystals",
+  "grade": 4,
+  "name": "Refined Focus Crystals",
+  "type": "Manufactured"
+ },
+ "rhenium": {
+  "category": null,
+  "grade": 1,
+  "name": "Rhenium",
+  "raw_category": 6,
+  "type": "Raw"
+ },
+ "ruthenium": {
+  "category": null,
+  "grade": 4,
+  "name": "Ruthenium",
+  "raw_category": 3,
+  "type": "Raw"
+ },
+ "salvagedalloys": {
+  "category": "Alloys",
+  "grade": 1,
+  "name": "Salvaged Alloys",
+  "type": "Manufactured"
+ },
+ "scanarchives": {
+  "category": "Data Archives",
+  "grade": 2,
+  "name": "Unidentified Scan Archives",
+  "type": "Encoded"
+ },
+ "scandatabanks": {
+  "category": "Data Archives",
+  "grade": 3,
+  "name": "Classified Scan Databanks",
+  "type": "Encoded"
+ },
+ "scrambledemissiondata": {
+  "category": "Emission Data",
+  "grade": 1,
+  "name": "Exceptional Scrambled Emission Data",
+  "type": "Encoded"
+ },
+ "securityfirmware": {
+  "category": "Encoded Firmware",
+  "grade": 4,
+  "name": "Security Firmware Patch",
+  "type": "Encoded"
+ },
+ "selenium": {
+  "category": null,
+  "grade": 4,
+  "name": "Selenium",
+  "raw_category": 4,
+  "type": "Raw"
+ },
+ "shieldcyclerecordings": {
+  "category": "Shield Data",
+  "grade": 1,
+  "name": "Distorted Shield Cycle Recordings",
+  "type": "Encoded"
+ },
+ "shielddensityreports": {
+  "category": "Shield Data",
+  "grade": 3,
+  "name": "Untypical Shield Scans",
+  "type": "Encoded"
+ },
+ "shieldemitters": {
+  "category": "Shielding",
+  "grade": 2,
+  "name": "Shield Emitters",
+  "type": "Manufactured"
+ },
+ "shieldfrequencydata": {
+  "category": "Shield Data",
+  "grade": 5,
+  "name": "Peculiar Shield Frequency Data",
+  "type": "Encoded"
+ },
+ "shieldingsensors": {
+  "category": "Shielding",
+  "grade": 3,
+  "name": "Shielding Sensors",
+  "type": "Manufactured"
+ },
+ "shieldpatternanalysis": {
+  "category": "Shield Data",
+  "grade": 4,
+  "name": "Aberrant Shield Pattern Analysis",
+  "type": "Encoded"
+ },
+ "shieldsoakanalysis": {
+  "category": "Shield Data",
+  "grade": 2,
+  "name": "Inconsistent Shield Soak Analysis",
+  "type": "Encoded"
+ },
+ "sulphur": {
+  "category": null,
+  "grade": 1,
+  "name": "Sulphur",
+  "raw_category": 3,
+  "type": "Raw"
+ },
+ "symmetrickeys": {
+  "category": "Encryption Files",
+  "grade": 3,
+  "name": "Open Symmetric Keys",
+  "type": "Encoded"
+ },
+ "technetium": {
+  "category": null,
+  "grade": 4,
+  "name": "Technetium",
+  "raw_category": 2,
+  "type": "Raw"
+ },
+ "tellurium": {
+  "category": null,
+  "grade": 4,
+  "name": "Tellurium",
+  "raw_category": 5,
+  "type": "Raw"
+ },
+ "temperedalloys": {
+  "category": "Thermic",
+  "grade": 1,
+  "name": "Tempered Alloys",
+  "type": "Manufactured"
+ },
+ "tg_biomechanicalconduits": {
+  "category": null,
+  "grade": 3,
+  "name": "Bio-Mechanical Conduits",
+  "type": "Manufactured"
+ },
+ "tg_compositiondata": {
+  "category": null,
+  "grade": 3,
+  "name": "Thargoid Material Composition Data",
+  "type": "Encoded"
+ },
+ "tg_propulsionelement": {
+  "category": null,
+  "grade": 5,
+  "name": "Propulsion Elements",
+  "type": "Manufactured"
+ },
+ "tg_residuedata": {
+  "category": null,
+  "grade": 4,
+  "name": "Thargoid Residue Data",
+  "type": "Encoded"
+ },
+ "tg_shipflightdata": {
+  "category": null,
+  "grade": 3,
+  "name": "Ship Flight Data",
+  "type": "Encoded"
+ },
+ "tg_shipsystemsdata": {
+  "category": null,
+  "grade": 4,
+  "name": "Ship Systems Data",
+  "type": "Encoded"
+ },
+ "tg_structuraldata": {
+  "category": null,
+  "grade": 2,
+  "name": "Thargoid Structural Data",
+  "type": "Encoded"
+ },
+ "tg_weaponparts": {
+  "category": null,
+  "grade": 4,
+  "name": "Weapon Parts",
+  "type": "Manufactured"
+ },
+ "tg_wreckagecomponents": {
+  "category": null,
+  "grade": 3,
+  "name": "Wreckage Components",
+  "type": "Manufactured"
+ },
+ "thermicalloys": {
+  "category": "Thermic",
+  "grade": 4,
+  "name": "Thermic Alloys",
+  "type": "Manufactured"
+ },
+ "tin": {
+  "category": null,
+  "grade": 3,
+  "name": "Tin",
+  "raw_category": 4,
+  "type": "Raw"
+ },
+ "tungsten": {
+  "category": null,
+  "grade": 3,
+  "name": "Tungsten",
+  "raw_category": 5,
+  "type": "Raw"
+ },
+ "uncutfocuscrystals": {
+  "category": "Crystals",
+  "grade": 2,
+  "name": "Flawed Focus Crystals",
+  "type": "Manufactured"
+ },
+ "unknowncarapace": {
+  "category": null,
+  "grade": 2,
+  "name": "Thargoid Carapace",
+  "type": "Manufactured"
+ },
+ "unknownenergycell": {
+  "category": null,
+  "grade": 3,
+  "name": "Thargoid Energy Cell",
+  "type": "Manufactured"
+ },
+ "unknownenergysource": {
+  "category": null,
+  "grade": 5,
+  "name": "Sensor Fragment",
+  "type": "Manufactured"
+ },
+ "unknownorganiccircuitry": {
+  "category": null,
+  "grade": 5,
+  "name": "Thargoid Organic Circuitry",
+  "type": "Manufactured"
+ },
+ "unknownshipsignature": {
+  "category": null,
+  "grade": 3,
+  "name": "Thargoid Ship Signature",
+  "type": "Encoded"
+ },
+ "unknowntechnologycomponents": {
+  "category": null,
+  "grade": 4,
+  "name": "Thargoid Technological Components",
+  "type": "Manufactured"
+ },
+ "unknownwakedata": {
+  "category": null,
+  "grade": 4,
+  "name": "Thargoid Wake Data",
+  "type": "Encoded"
+ },
+ "vanadium": {
+  "category": null,
+  "grade": 2,
+  "name": "Vanadium",
+  "raw_category": 1,
+  "type": "Raw"
+ },
+ "wakesolutions": {
+  "category": "Wake Scans",
+  "grade": 3,
+  "name": "Strange Wake Solutions",
+  "type": "Encoded"
+ },
+ "wornshieldemitters": {
+  "category": "Shielding",
+  "grade": 1,
+  "name": "Worn Shield Emitters",
+  "type": "Manufactured"
+ },
+ "yttrium": {
+  "category": null,
+  "grade": 4,
+  "name": "Yttrium",
+  "raw_category": 1,
+  "type": "Raw"
+ },
+ "zinc": {
+  "category": null,
+  "grade": 2,
+  "name": "Zinc",
+  "raw_category": 4,
+  "type": "Raw"
+ },
+ "zirconium": {
+  "category": null,
+  "grade": 2,
+  "name": "Zirconium",
+  "raw_category": 7,
+  "type": "Raw"
+ }
+}

@@ -73,9 +73,14 @@ STATE = {
     "ShipName": "Bishop", "ShipIdent": "JT-01", "HullValue": 18000000,
     "ModulesValue": 90000000, "Rebuy": 5400000, "MaxJumpRange": 18.5,
     "CargoCapacity": 64, "FuelCapacity": {"Main": 32, "Reserve": 1.07},
-    "Raw": {"iron": 300, "zinc": 120, "tin": 24, "antimony": 6},
-    "Manufactured": {"shieldemitters": 200, "fedcorecomposites": 12, "gridresistors": 250},
-    "Encoded": {"shielddensityreports": 150, "shieldcyclerecordings": 300},
+    # Last three (cadmium / militarysupercapacitors / scandatabanks) are exactly
+    # the mats for Power Distributor 'Engine Focused' grade 5 — used to verify
+    # the blueprint affordability math below.
+    "Raw": {"iron": 300, "zinc": 120, "tin": 24, "antimony": 6, "cadmium": 5},
+    "Manufactured": {"shieldemitters": 200, "fedcorecomposites": 12,
+                     "gridresistors": 250, "militarysupercapacitors": 5},
+    "Encoded": {"shielddensityreports": 150, "shieldcyclerecordings": 300,
+                "scandatabanks": 5},
     "Cargo": {}, "SystemName": "Shinrarta Dezhra", "StationName": "Jameson Memorial",
     "StationType": "Coriolis", "IsDocked": True, "OnFoot": False, "Body": None,
 }
@@ -140,6 +145,24 @@ check("MCP engineering experimental",
 
 fleet = srv.get_fleet()
 check("MCP fleet has current ship", any(s.get("current") for s in fleet["ships"]))
+
+# --- Blueprint requirements --------------------------------------------------
+bp = srv.get_blueprint_requirements("engine focused", grade=5, module_type="Power Distributor")
+check("blueprint lookup finds PD Engine Focused g5", bp["count"] >= 1, str(bp["count"]))
+pd5 = bp["blueprints"][0]
+check("blueprint ingredients tracked", all(i["tracked"] for i in pd5["ingredients"]))
+check("blueprint affordable with stocked mats", pd5["can_afford"] is True,
+      str(pd5["can_afford"]))
+check("blueprint short is zero when affordable",
+      all(i["short"] == 0 for i in pd5["ingredients"]))
+
+# Same blueprint, but only_affordable should drop it once we can't pay.
+empty_state = dict(STATE2)
+empty_state["Raw"] = {}; empty_state["Manufactured"] = {}; empty_state["Encoded"] = {}
+load.CONNECTOR.snapshot["materials"] = {"raw": {}, "manufactured": {}, "encoded": {}}
+load.CONNECTOR._flush()
+bp_none = srv.get_blueprint_requirements("engine focused", grade=5, only_affordable=True)
+check("only_affordable filters out unaffordable", bp_none["count"] == 0, str(bp_none["count"]))
 
 print()
 if failures:

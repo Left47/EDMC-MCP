@@ -32,8 +32,10 @@ The MCP server exposes these tools:
 | `get_status` | Commander, current ship, location, credits, data freshness |
 | `get_materials` | Materials enriched with friendly name, grade (1–5), category, count. Filter by type / min grade / category / search |
 | `get_current_loadout` | Every fitted module on your active ship, with engineering blueprint, grade, experimental effect, and per-stat modifiers |
+| `get_blueprint_requirements` | Engineering blueprints & experimental effects with per-grade material costs, compared against your inventory (need / have / short, and whether you can afford the roll now) |
 | `get_fleet` | Your ships (current + stored, as last seen at a shipyard) |
 | `get_full_snapshot` | The raw snapshot |
+| `refresh_reference_data` | Re-download the materials & blueprint reference data (run if the game adds new content the tools don't recognise) |
 
 ## Prerequisites
 
@@ -150,8 +152,25 @@ With Elite Dangerous **and** EDMarketConnector running, ask Claude:
 
 - *"What's my current loadout and which modules are engineered?"*
 - *"List my grade-5 manufactured materials."*
-- *"I want to roll Dirty Drive Tuning grade 5 — do I have the materials?"*
+- *"I want to roll Dirty Drive Tuning grade 5 — do I have the materials?"* (uses `get_blueprint_requirements`)
+- *"Which Power Distributor blueprints can I fully afford right now?"*
+- *"For my current FSD, what would the next grade of Increased Range cost me?"*
 - *"What shield-related encoded data am I low on?"*
+
+## Updating
+
+**Code (plugin + server):** the plugin checks GitHub for a newer release on
+startup and, if one exists, appends `(update vX available)` to the status line
+on the EDMC main window. To update, run **`update.bat`** (Windows) or
+**`./update.sh`** (Linux) from your installed folder — it pulls the latest
+(git *or* ZIP download), then re-runs the installer. Restart EDMC and Claude
+Desktop afterward.
+
+**Reference data (materials & blueprints):** kept in `materials_ref.json` /
+`blueprints_ref.json`, generated from community sources. If the game adds new
+materials or blueprints, just ask Claude to run **`refresh_reference_data`**, or
+run `python mcp/update_references.py` yourself. (The installer also refreshes
+these automatically.)
 
 ## Notes & limitations
 

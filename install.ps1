@@ -83,6 +83,10 @@ if ($LASTEXITCODE -ne 0) { throw "venv creation failed (exit $LASTEXITCODE)" }
 & $venvPy -m pip install --upgrade pip
 & $venvPy -m pip install -r $req
 if ($LASTEXITCODE -ne 0) { throw "pip install failed (exit $LASTEXITCODE)" }
+# Best-effort: refresh reference data from the community sources. Non-fatal —
+# the repo already ships generated copies if this can't reach the network.
+try { & $venvPy (Join-Path $repo 'mcp\update_references.py') | Out-Null; Write-Host "        reference data refreshed" }
+catch { Write-Warning "Could not refresh reference data (using bundled copies): $_" }
 Write-Host "[2/3] MCP dependency installed into $venv" -ForegroundColor Green
 
 # --- 3. Wire up Claude Desktop config ---------------------------------------

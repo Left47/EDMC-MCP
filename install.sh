@@ -55,6 +55,9 @@ VENV="$REPO/.venv"
 VENV_PY="$VENV/bin/python"
 "$VENV_PY" -m pip install -q --upgrade pip
 "$VENV_PY" -m pip install -q -r "$REPO/mcp/requirements.txt"
+# Best-effort reference-data refresh; the repo ships generated copies as fallback.
+"$VENV_PY" "$REPO/mcp/update_references.py" >/dev/null 2>&1 && echo "        reference data refreshed" \
+  || echo "        (kept bundled reference data; network refresh skipped)"
 echo "[2/3] MCP dependency installed into $VENV"
 
 # --- 3. Merge Claude Desktop config (via python for safe JSON handling) ------

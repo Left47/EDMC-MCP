@@ -28,6 +28,7 @@ from mcp.server.fastmcp import FastMCP
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_STATE_FILE = os.path.join(os.path.expanduser("~"), ".elite-dangerous-claude", "state.json")
 MATERIALS_REF_FILE = os.path.join(HERE, "materials_ref.json")
+BLUEPRINTS_REF_FILE = os.path.join(HERE, "blueprints_ref.json")
 
 mcp = FastMCP("elite-dangerous")
 
@@ -36,15 +37,16 @@ def _state_path() -> str:
     return os.environ.get("EDCLAUDE_STATE_FILE", DEFAULT_STATE_FILE)
 
 
-def _load_materials_ref() -> dict[str, Any]:
+def _load_json_file(path: str, fallback: Any) -> Any:
     try:
-        with open(MATERIALS_REF_FILE, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8") as fh:
             return json.load(fh)
-    except OSError:
-        return {}
+    except (OSError, json.JSONDecodeError):
+        return fallback
 
 
-_MAT_REF = _load_materials_ref()
+_MAT_REF = _load_json_file(MATERIALS_REF_FILE, {})
+_BP_REF = _load_json_file(BLUEPRINTS_REF_FILE, [])
 
 
 def _load_snapshot() -> dict[str, Any]:
@@ -239,6 +241,102 @@ def get_full_snapshot() -> dict[str, Any]:
     """Return the entire raw snapshot (everything the plugin tracks). Use the
     more specific tools when possible; this is for when you need raw fields."""
     return _load_snapshot()
+
+
+def _inventory_by_symbol(snap: dict[str, Any]) -> dict[str, int]:
+    """Flatten raw/manufactured/encoded into one symbol -> count map."""
+    inv: dict[str, int] = {}
+    for bucket in (snap.get("materials") or {}).values():
+        for symbol, count in (bucket or {}).items():
+            inv[symbol.lower()] = inv.get(symbol.lower(), 0) + count
+    return inv
+
+
+@mcp.tool()
+def get_blueprint_requirements(
+    query: str,
+    grade: Optional[int] = None,
+    module_type: Optional[str] = None,
+    experimental_only: bool = False,
+    only_affordable: bool = False,
+) -> dict[str, Any]:
+    """Look up engineering blueprints (and experimental effects) with their
+    material costs, compared against what's currently in inventory — so you can
+    tell exactly what a roll needs and whether it's affordable right now.
+
+    Args:
+        query: substring matched (case-insensitive) against the blueprint name
+            AND module type, e.g. 'dirty drive', 'engine focused', 'long range'.
+        grade: filter to a single grade 1-5 (omit for all grades; experimental
+            effects have no grade).
+        module_type: extra filter on module type, e.g. 'Power Distributor',
+            'Frame Shift Drive', 'Thrusters'.
+        experimental_only: only return experimental ("special") effects.
+        only_affordable: only return blueprints you can fully afford now.
+
+    Each ingredient is annotated with need/have/short. `tracked` is false for
+    ingredients that aren't ship engineering materials (Odyssey suit mats,
+    tech-broker commodities) — those aren't in the materials inventory, so
+    affordability ignores them and `can_afford` is null when any are present.
+    """
+    snap = _load_snapshot()
+    inv = _inventory_by_symbol(snap)
+    q = query.lower().strip()
+
+    results: list[dict[str, Any]] = []
+    for bp in _BP_REF:
+        name, btype = bp.get("name") or "", bp.get("type") or ""
+        if q and q not in name.lower() and q not in btype.lower():
+            continue
+        if grade is not None and bp.get("grade") != grade:
+            continue
+        if module_type and module_type.lower() not in btype.lower():
+            continue
+        if experimental_only and not bp.get("experimental"):
+            continue
+
+        ingredients, untracked, affordable = [], False, True
+        for ing in bp.get("ingredients", []):
+            sym = ing.get("symbol")
+            need = ing.get("count", 0)
+            tracked = sym is not None
+            have = inv.get(sym, 0) if tracked else None
+            if not tracked:
+                untracked = True
+            elif have < need:
+                affordable = False
+            ingredients.append({
+                "name": ing.get("name"), "symbol": sym, "need": need,
+                "have": have, "short": (max(0, need - have) if tracked else None),
+                "tracked": tracked,
+            })
+        can_afford = None if untracked else affordable
+        if only_affordable and can_afford is not True:
+            continue
+        results.append({
+            "module_type": btype, "blueprint": name, "grade": bp.get("grade"),
+            "experimental": bp.get("experimental"), "engineers": bp.get("engineers"),
+            "can_afford": can_afford, "ingredients": ingredients,
+            "effects": bp.get("effects"),
+        })
+
+    results.sort(key=lambda b: (b["module_type"] or "", b["blueprint"] or "", b["grade"] or 0))
+    return {"query": query, "count": len(results), "blueprints": results,
+            "data_age_seconds": snap.get("_age_seconds")}
+
+
+@mcp.tool()
+def refresh_reference_data() -> dict[str, Any]:
+    """Re-download the materials and engineering blueprint reference data from
+    the community sources and rebuild the bundled reference files. Use this if
+    the game has added new materials, blueprints, or experimental effects that
+    the other tools don't yet recognise. Requires internet access."""
+    global _MAT_REF, _BP_REF
+    import update_references  # local module; stdlib-only, network at call time
+    summary = update_references.update_references(HERE)
+    _MAT_REF = _load_json_file(MATERIALS_REF_FILE, {})
+    _BP_REF = _load_json_file(BLUEPRINTS_REF_FILE, [])
+    return {"status": "refreshed", **summary}
 
 
 if __name__ == "__main__":

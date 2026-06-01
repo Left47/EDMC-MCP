@@ -34,9 +34,41 @@ if not hasattr(config, "get_bool"):
     config.get_bool = lambda key, default=False: bool(config.getint(key))  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
+VERSION = "0.2.0"
+GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
 WRITE_DEBOUNCE_SECONDS = 1.5
+
+# Set by the background update check; surfaced on the main-window label.
+_update_available: Optional[str] = None
+
+
+def _check_for_update() -> None:
+    """Best-effort: compare VERSION against the latest GitHub release tag."""
+    global _update_available
+    try:
+        import requests  # bundled with EDMC
+        resp = requests.get(
+            f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest", timeout=10)
+        latest = resp.json().get("tag_name", "").lstrip("v")
+        if latest and _version_tuple(latest) > _version_tuple(VERSION):
+            _update_available = latest
+            logger.info(f"EDClaudeConnector: update available: v{latest} (have v{VERSION})")
+            # NB: do not touch tkinter here — this runs on a worker thread.
+            # plugin_app schedules a label refresh on the main loop instead.
+    except Exception as exc:  # never disrupt the app over an update check
+        logger.debug(f"EDClaudeConnector update check skipped: {exc}")
+
+
+def _version_tuple(v: str) -> tuple:
+    parts = []
+    for p in v.split("."):
+        try:
+            parts.append(int(p))
+        except ValueError:
+            parts.append(0)
+    return tuple(parts)
 
 # Materials supplied via the journal `state` dict are organised into these keys.
 MATERIAL_BUCKETS = {
@@ -215,7 +247,8 @@ _status_label: Optional[tk.Label] = None
 
 def plugin_start3(plugin_dir: str) -> str:
     CONNECTOR.start()
-    logger.info(f"EDClaudeConnector started; snapshot path: {CONNECTOR.path}")
+    logger.info(f"EDClaudeConnector v{VERSION} started; snapshot path: {CONNECTOR.path}")
+    threading.Thread(target=_check_for_update, name="EDClaudeUpdateCheck", daemon=True).start()
     return PLUGIN_NAME
 
 
@@ -234,12 +267,16 @@ def _refresh_status_label() -> None:
     else:
         _status_label["text"] = "Claude: off (enable in Settings)"
         _status_label["foreground"] = "grey"
+    if _update_available:
+        _status_label["text"] += f"  (update v{_update_available} available)"
 
 
 def plugin_app(parent: tk.Frame) -> tk.Label:
     global _status_label
     _status_label = tk.Label(parent)
     _refresh_status_label()
+    # Pick up the background update-check result on the main thread (tkinter-safe).
+    _status_label.after(12000, _refresh_status_label)
     return _status_label
 
 

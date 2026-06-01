@@ -92,12 +92,15 @@ Write-Host "[2/3] MCP dependency installed into $venv" -ForegroundColor Green
 # We write to every Claude config dir we find so it works regardless.
 $serverPath = Join-Path $repo 'mcp\ed_claude_mcp.py'
 
+# Always pin an absolute snapshot path via EDCLAUDE_STATE_FILE. The Microsoft
+# Store build of Claude is sandboxed, so the server's `~` expansion can resolve
+# to a virtualised home rather than the user's real profile where the plugin
+# writes. Pinning the path avoids that entirely.
+$statePinned = if ($StateFile) { $StateFile } else { Join-Path $env:USERPROFILE '.elite-dangerous-claude\state.json' }
 $server = [PSCustomObject]@{
     command = $venvPy
     args    = @($serverPath)
-}
-if ($StateFile) {
-    $server | Add-Member -NotePropertyName 'env' -NotePropertyValue ([PSCustomObject]@{ EDCLAUDE_STATE_FILE = $StateFile })
+    env     = [PSCustomObject]@{ EDCLAUDE_STATE_FILE = $statePinned }
 }
 
 $configDirs = New-Object System.Collections.Generic.List[string]

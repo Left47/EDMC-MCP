@@ -69,9 +69,14 @@ try:
 except (FileNotFoundError, json.JSONDecodeError):
     cfg = {}
 cfg.setdefault("mcpServers", {})
-server = {"command": os.environ["PY_BIN"], "args": [os.environ["SERVER"]]}
-if os.environ.get("STATE"):
-    server["env"] = {"EDCLAUDE_STATE_FILE": os.environ["STATE"]}
+# Pin an absolute snapshot path so the server never depends on `~` expansion.
+state = os.environ.get("STATE") or os.path.join(
+    os.path.expanduser("~"), ".elite-dangerous-claude", "state.json")
+server = {
+    "command": os.environ["PY_BIN"],
+    "args": [os.environ["SERVER"]],
+    "env": {"EDCLAUDE_STATE_FILE": state},
+}
 cfg["mcpServers"]["elite-dangerous"] = server  # add/replace only this key
 with open(cfg_path, "w") as fh:
     json.dump(cfg, fh, indent=2)

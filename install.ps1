@@ -96,21 +96,38 @@ Write-Host "[2/3] MCP dependency installed into $venv" -ForegroundColor Green
 # We write to every Claude config dir we find so it works regardless.
 $serverPath = Join-Path $repo 'mcp\ed_claude_mcp.py'
 
-# Always pin an absolute snapshot path via EDCLAUDE_STATE_FILE. The Microsoft
-# Store build of Claude is sandboxed, so the server's `~` expansion can resolve
-# to a virtualised home rather than the user's real profile where the plugin
-# writes. Pinning the path avoids that entirely.
-$statePinned = if ($StateFile) { $StateFile } else { Join-Path $env:USERPROFILE '.elite-dangerous-claude\state.json' }
+$configDirs = New-Object System.Collections.Generic.List[string]
+$configDirs.Add((Join-Path $env:APPDATA 'Claude'))                       # standalone .exe build
+Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Packages') -Filter 'Claude_*' -Directory -ErrorAction SilentlyContinue |
+    ForEach-Object { $configDirs.Add((Join-Path $_.FullName 'LocalCache\Roaming\Claude')) }  # Store build(s)
+
+# Determine the snapshot path to pin via EDCLAUDE_STATE_FILE, in priority order:
+#   1. -StateFile argument (explicit override)
+#   2. a path already pinned in an existing Claude config (preserve on update)
+#   3. the default under the user profile
+# This keeps a custom snapshot path working across re-installs/updates.
+$default = Join-Path $env:USERPROFILE '.elite-dangerous-claude\state.json'
+$existing = $null
+foreach ($dir in $configDirs) {
+    $cp = Join-Path $dir 'claude_desktop_config.json'
+    if (-not (Test-Path $cp)) { continue }
+    try {
+        $prev = (Get-Content -Raw $cp | ConvertFrom-Json).mcpServers.'elite-dangerous'.env.EDCLAUDE_STATE_FILE
+        if ($prev) { $existing = $prev; break }
+    } catch { }
+}
+$statePinned = if ($StateFile) { $StateFile } elseif ($existing) { $existing } else { $default }
+if ($existing -and -not $StateFile -and $existing -ne $default) {
+    Write-Host "        preserving custom snapshot path: $statePinned"
+}
+
+# Pin an absolute path: the Microsoft Store Claude is sandboxed, so the server's
+# `~` expansion can resolve to a virtualised home rather than the real profile.
 $server = [PSCustomObject]@{
     command = $venvPy
     args    = @($serverPath)
     env     = [PSCustomObject]@{ EDCLAUDE_STATE_FILE = $statePinned }
 }
-
-$configDirs = New-Object System.Collections.Generic.List[string]
-$configDirs.Add((Join-Path $env:APPDATA 'Claude'))                       # standalone .exe build
-Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Packages') -Filter 'Claude_*' -Directory -ErrorAction SilentlyContinue |
-    ForEach-Object { $configDirs.Add((Join-Path $_.FullName 'LocalCache\Roaming\Claude')) }  # Store build(s)
 
 $written = @()
 foreach ($dir in $configDirs) {

@@ -73,8 +73,16 @@ except (FileNotFoundError, json.JSONDecodeError):
     cfg = {}
 cfg.setdefault("mcpServers", {})
 # Pin an absolute snapshot path so the server never depends on `~` expansion.
-state = os.environ.get("STATE") or os.path.join(
-    os.path.expanduser("~"), ".elite-dangerous-claude", "state.json")
+# Priority: STATE arg > a path already pinned in the config (preserve on update)
+# > default. This keeps a custom snapshot path working across re-installs.
+default = os.path.join(os.path.expanduser("~"), ".elite-dangerous-claude", "state.json")
+try:
+    existing = cfg["mcpServers"].get("elite-dangerous", {}).get("env", {}).get("EDCLAUDE_STATE_FILE")
+except AttributeError:
+    existing = None
+state = os.environ.get("STATE") or existing or default
+if existing and not os.environ.get("STATE") and existing != default:
+    print(f"        preserving custom snapshot path: {state}")
 server = {
     "command": os.environ["PY_BIN"],
     "args": [os.environ["SERVER"]],

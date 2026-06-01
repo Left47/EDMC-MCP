@@ -4,3 +4,4 @@ __pycache__/
 state.json
 *.tmp
 .DS_Store
+EDClaudeConnector.zip

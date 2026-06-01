@@ -35,7 +35,27 @@ The MCP server exposes these tools:
 | `get_fleet` | Your ships (current + stored, as last seen at a shipyard) |
 | `get_full_snapshot` | The raw snapshot |
 
-## Install
+## Quick install (Windows)
+
+The fastest path — does all three steps below automatically:
+
+1. Download and extract this repo (green **Code → Download ZIP**, or
+   `git clone https://github.com/Left47/EDMC-MCP`).
+2. Double-click **`install.bat`**.
+
+It copies the plugin into EDMC, `pip install`s the MCP dependency, and adds the
+`elite-dangerous` server to your Claude Desktop config (merging — it won't touch
+other MCP servers). Then restart EDMarketConnector and Claude Desktop.
+
+> Just want the EDMC plugin (no Claude Desktop wiring)? Grab
+> **`EDClaudeConnector.zip`** from the
+> [latest release](https://github.com/Left47/EDMC-MCP/releases/latest) and
+> extract the `EDClaudeConnector` folder into your EDMC plugins directory.
+
+For macOS/Linux, or to understand what the installer does, follow the manual
+steps below.
+
+## Install (manual)
 
 ### 1. The EDMC plugin
 

@@ -76,7 +76,7 @@ reference from its own directory.
   "mcpServers": {
     "elite-dangerous": {
       "command": "python",
-      "args": ["C:\\Users\\you\\elite-dangerous-claude-connector\\mcp\\ed_claude_mcp.py"]
+      "args": ["C:\\Users\\you\\EDMC-MCP\\mcp\\ed_claude_mcp.py"]
     }
   }
 }

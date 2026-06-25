@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import datetime
 import json
+import math
 import os
 import time
 import uuid
@@ -193,22 +194,8 @@ def get_materials(
     }
 
 
-@mcp.tool()
-def get_current_loadout() -> dict[str, Any]:
-    """Full loadout of the ship the commander is currently in: every fitted
-    module with its slot, item, power priority, health, and any engineering
-    blueprint + experimental effect + per-stat modifiers. Use this to advise on
-    engineering rolls for the active ship."""
-    snap = _load_snapshot()
-    ship = snap.get("current_ship", {})
-    loadout = ship.get("loadout")
-    if not loadout:
-        return {
-            "ship": {"type": ship.get("type"), "name": ship.get("name")},
-            "note": "No detailed Loadout captured yet. Switch ships or visit "
-                    "outfitting in-game to make the game emit a Loadout event.",
-        }
-
+def _format_loadout(loadout: dict[str, Any]) -> dict[str, Any]:
+    """Shape a raw journal Loadout event into the module summary the tools return."""
     modules = []
     for m in loadout.get("Modules", []):
         modules.append({
@@ -235,8 +222,68 @@ def get_current_loadout() -> dict[str, Any]:
         "module_count": len(modules),
         "engineered_module_count": len(engineered),
         "modules": modules,
-        "data_age_seconds": snap.get("_age_seconds"),
     }
+
+
+@mcp.tool()
+def get_current_loadout() -> dict[str, Any]:
+    """Full loadout of the ship the commander is currently in: every fitted
+    module with its slot, item, power priority, health, and any engineering
+    blueprint + experimental effect + per-stat modifiers. Use this to advise on
+    engineering rolls for the active ship. For a different ship in the fleet, use
+    get_ship_loadout."""
+    snap = _load_snapshot()
+    ship = snap.get("current_ship", {})
+    loadout = ship.get("loadout")
+    if not loadout:
+        return {
+            "ship": {"type": ship.get("type"), "name": ship.get("name")},
+            "note": "No detailed Loadout captured yet. Switch ships or visit "
+                    "outfitting in-game to make the game emit a Loadout event.",
+        }
+    return {**_format_loadout(loadout), "data_age_seconds": snap.get("_age_seconds")}
+
+
+@mcp.tool()
+def get_ship_loadout(query: str) -> dict[str, Any]:
+    """Full cached loadout of ANY ship in the fleet — not just the one you're
+    currently in — with every module and its engineering, exactly like
+    get_current_loadout. The plugin caches each ship's last-known loadout every
+    time you board it or change its outfitting, and the cache survives restarts.
+
+    Use this to compare ships or plan engineering for a stored ship without
+    having to switch to it in-game.
+
+    Args:
+        query: match a ship by its name, type (e.g. 'anaconda',
+            'federation_corvette'), ident, or numeric ShipID. Case-insensitive
+            substring match.
+
+    If a ship hasn't been boarded while EDMC was running, it won't be cached yet
+    — board it (or open its outfitting) once to capture it.
+    """
+    snap = _load_snapshot()
+    cache = snap.get("ship_loadouts") or {}
+    q = query.strip().lower()
+    matches = []
+    for sid, lo in cache.items():
+        haystack = [str(sid), lo.get("ShipName") or "", lo.get("Ship") or "",
+                    lo.get("ShipIdent") or ""]
+        if any(q == h.lower() or (q and q in h.lower()) for h in haystack):
+            matches.append((sid, lo))
+
+    if not matches:
+        known = sorted(
+            f"{lo.get('Ship')} \"{lo.get('ShipName')}\" (id {sid})"
+            for sid, lo in cache.items())
+        return {"query": query, "matches": 0,
+                "cached_ships": known,
+                "note": "No cached ship matched. Board the ship (or open its "
+                        "outfitting) once while EDMC is running to cache it."}
+
+    ships = [{**_format_loadout(lo), "ship_id": sid} for sid, lo in matches]
+    return {"query": query, "matches": len(ships), "ships": ships,
+            "data_age_seconds": snap.get("_age_seconds")}
 
 
 @mcp.tool()
@@ -244,15 +291,29 @@ def get_fleet() -> dict[str, Any]:
     """List known ships in the fleet (current ship plus stored ships, when last
     seen at a shipyard) with type, name, value, and location."""
     snap = _load_snapshot()
-    ships = snap.get("ships", {})
+    ships = dict(snap.get("ships", {}))
+    cache = snap.get("ship_loadouts") or {}
+    # Include ships we've cached a loadout for even if they're not in the last
+    # StoredShips list (those only refresh at a shipyard).
+    for sid, lo in cache.items():
+        if sid not in ships:
+            ships[sid] = {"type": lo.get("Ship"), "name": lo.get("ShipName"),
+                          "ident": lo.get("ShipIdent")}
     fleet = []
     for ship_id, info in ships.items():
         entry = {"ship_id": ship_id}
         entry.update(info)
+        loadout = cache.get(str(ship_id))
+        entry["has_detailed_loadout"] = loadout is not None
+        if loadout is not None:
+            entry["engineered_module_count"] = sum(
+                1 for m in loadout.get("Modules", []) if m.get("Engineering"))
         fleet.append(entry)
     fleet.sort(key=lambda s: (not s.get("current", False), s.get("type") or ""))
     return {"count": len(fleet), "ships": fleet,
-            "note": "Stored ships only refresh when you dock at a shipyard.",
+            "note": "Stored ships only refresh when you dock at a shipyard; "
+                    "use get_ship_loadout for any ship's full cached loadout "
+                    "(has_detailed_loadout=true).",
             "data_age_seconds": snap.get("_age_seconds")}
 
 
@@ -270,6 +331,125 @@ def _inventory_by_symbol(snap: dict[str, Any]) -> dict[str, int]:
         for symbol, count in (bucket or {}).items():
             inv[symbol.lower()] = inv.get(symbol.lower(), 0) + count
     return inv
+
+
+def _resolve_material(query: str) -> tuple[Optional[str], Optional[dict[str, Any]]]:
+    """Resolve a material symbol or friendly name to (symbol, ref)."""
+    q = query.strip().lower()
+    if q in _MAT_REF:
+        return q, _MAT_REF[q]
+    for sym, ref in _MAT_REF.items():
+        if (ref.get("name") or "").lower() == q:
+            return sym, ref
+    for sym, ref in _MAT_REF.items():  # substring fallback
+        if q and q in (ref.get("name") or "").lower():
+            return sym, ref
+    return None, None
+
+
+def _mat_subcat(ref: dict[str, Any]) -> tuple:
+    """The trader sub-category a material belongs to (raw group number, or the
+    named manufactured/encoded sub-category)."""
+    if ref.get("type") == "Raw":
+        return ("raw", ref.get("raw_category"))
+    return ("sub", ref.get("category"))
+
+
+def _trade_cost(src: dict[str, Any], tgt: dict[str, Any]) -> Optional[float]:
+    """Source units consumed per 1 target unit at a Material Trader, or None if
+    the trade is impossible (different material type — traders are type-locked).
+
+    In-game rates: +1 grade costs x6 (multiplicative per grade), -1 grade gives
+    x3 (so 1/3 the cost per grade), and a different sub-category costs an extra x6.
+    """
+    if not src.get("type") or src.get("type") != tgt.get("type"):
+        return None
+    sg, tg = src.get("grade"), tgt.get("grade")
+    if sg is None or tg is None:
+        return None
+    diff = tg - sg  # > 0: target is a higher grade (trading up)
+    cost = 6.0 ** diff if diff >= 0 else 1.0 / (3.0 ** (-diff))
+    if _mat_subcat(src) != _mat_subcat(tgt):
+        cost *= 6.0
+    return cost
+
+
+def _fmt_rate(per_target: float) -> str:
+    if per_target > 1:
+        return f"{round(per_target)} : 1 (trade up)"
+    if per_target < 1:
+        return f"1 : {round(1 / per_target)} (trade down)"
+    return "1 : 1"
+
+
+@mcp.tool()
+def plan_material_trades(target: str, quantity: int = 1, max_options: int = 10) -> dict[str, Any]:
+    """Work out how to obtain a material you need by trading materials you
+    already have at a Material Trader, using the in-game exchange rates.
+
+    Rates apply WITHIN one material type only — Raw, Manufactured, and Encoded
+    cannot be traded for each other. Trading UP one grade costs 6:1 and stacks
+    per grade (36:1 across two grades); trading DOWN gives 1:3 per grade (1:9
+    across two); swapping to a different sub-category costs an extra x6. So
+    trading DOWN within the same sub-category is the most efficient source.
+
+    Args:
+        target: the material you want (symbol or friendly name).
+        quantity: how many units you need (default 1).
+        max_options: cap on trade sources returned (cheapest first).
+
+    Returns the viable trades from your CURRENT inventory, cheapest first (fewest
+    source units consumed), each with the source material, the exchange rate, how
+    many units it would consume, and whether you hold enough to fully cover it.
+    """
+    snap = _load_snapshot()
+    tgt_sym, tgt_ref = _resolve_material(target)
+    if tgt_ref is None:
+        return {"target": target,
+                "error": "Unknown material — use a symbol or name from get_materials."}
+
+    inv = _inventory_by_symbol(snap)
+    have_target = inv.get(tgt_sym, 0)
+    still_short = max(0, quantity - have_target)
+
+    options: list[dict[str, Any]] = []
+    for sym, count in inv.items():
+        if count <= 0 or sym == tgt_sym:
+            continue
+        src_ref = _MAT_REF.get(sym)
+        if not src_ref:
+            continue
+        per_target = _trade_cost(src_ref, tgt_ref)
+        if per_target is None:
+            continue
+        options.append({
+            "source": src_ref.get("name", sym),
+            "source_symbol": sym,
+            "source_grade": src_ref.get("grade"),
+            "source_subcategory": src_ref.get("category") or src_ref.get("raw_category"),
+            "rate": _fmt_rate(per_target),
+            "source_per_target": round(per_target, 3),
+            "have": count,
+            "need_to_trade": math.ceil(still_short * per_target) if still_short else 0,
+            "can_cover_shortfall": count >= math.ceil(still_short * per_target) if still_short else True,
+            "max_obtainable": int(count / per_target),
+        })
+
+    options.sort(key=lambda o: (not o["can_cover_shortfall"], o["source_per_target"], -o["have"]))
+    return {
+        "target": tgt_ref.get("name", tgt_sym),
+        "target_symbol": tgt_sym,
+        "target_type": tgt_ref.get("type"),
+        "target_grade": tgt_ref.get("grade"),
+        "quantity_needed": quantity,
+        "already_have": have_target,
+        "still_short": still_short,
+        "trade_options": options[:max_options],
+        "note": "Material Traders are type-locked (no Raw/Manufactured/Encoded "
+                "cross-trades). You trade in whole units, so amounts are rounded "
+                "up. 'need_to_trade' covers only the shortfall.",
+        "data_age_seconds": snap.get("_age_seconds"),
+    }
 
 
 @mcp.tool()

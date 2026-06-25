@@ -32,9 +32,11 @@ The MCP server exposes these tools:
 | `get_status` | Commander, current ship, location, credits, data freshness |
 | `get_materials` | Materials enriched with friendly name, grade (1–5), category, count. Filter by type / min grade / category / search |
 | `get_current_loadout` | Every fitted module on your active ship, with engineering blueprint, grade, experimental effect, and per-stat modifiers |
+| `get_ship_loadout` | The full cached loadout of **any** ship in your fleet (matched by name, type, ident, or ID) — not just the one you're in. Each ship is cached the last time you boarded it or changed its outfitting, and survives restarts |
 | `get_blueprint_requirements` | Engineering blueprints & experimental effects with per-grade material costs, compared against your inventory (need / have / short, and whether you can afford the roll now) |
+| `plan_material_trades` | How to get a material you need by trading others at a Material Trader, using in-game rates (trade up 6:1/grade, down 1:3/grade, ×6 across sub-categories; Raw/Manufactured/Encoded can't cross). Cheapest options from your current inventory first |
 | `get_engineer_status` | Engineers with live unlock status (Unlocked + rank, Invited, Known, Unknown) merged with location, access & unlock requirements, specialisations, and max grade |
-| `get_fleet` | Your ships (current + stored, as last seen at a shipyard) |
+| `get_fleet` | Your ships (current + stored + any with a cached loadout), flagging which have a detailed loadout available |
 | `request_capi_refresh` | Ask EDMC to pull a fresh live update from Frontier's Companion API (the same as EDMC's **Update** button) — the authoritative current loadout, fleet, and credits/location, including details the game doesn't write to the journal. If Frontier's global cooldown is active it returns a `cooldown` status with `retry_after_seconds` |
 | `get_full_snapshot` | The raw snapshot (includes the last captured live CAPI data under `capi`) |
 | `refresh_reference_data` | Re-download the materials & blueprint reference data (run if the game adds new content the tools don't recognise) |
@@ -160,6 +162,8 @@ With Elite Dangerous **and** EDMarketConnector running, ask Claude:
 - *"Which engineers do Power Distributor mods, and which have I unlocked?"* (uses `get_engineer_status`)
 - *"What do I still need to unlock the engineers I haven't got yet?"*
 - *"What shield-related encoded data am I low on?"*
+- *"I'm short 8 Conductive Polymers for this roll — what can I trade for them?"* (uses `plan_material_trades`)
+- *"Show me the engineering on my stored Anaconda."* (uses `get_ship_loadout`)
 - *"Pull a fresh live update from Frontier and tell me my exact current loadout."* (uses `request_capi_refresh`)
 
 ## Updating
@@ -183,6 +187,9 @@ these automatically.)
 - Detailed loadout only updates when the game emits a `Loadout` event (ship
   swap, outfitting changes, login). Visit outfitting once to populate it — or
   ask Claude to run `request_capi_refresh` to pull the live loadout from Frontier.
+- Each ship's loadout is cached the last time you boarded it, so `get_ship_loadout`
+  can show any ship even when you're not in it. A ship you've never boarded while
+  EDMC was running won't be cached yet — board it once to capture it.
 - `request_capi_refresh` is subject to Frontier's global ~60s cooldown (shared
   with EDMC's **Update** button and its automatic pulls). If it's active the tool
   returns a `cooldown` status with `retry_after_seconds` rather than firing. EDMC

@@ -38,7 +38,7 @@ if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -261,8 +261,28 @@ class _Connector:
         existing = _read_request(self.path)
         if existing:
             self._last_request_nonce = existing.get("nonce")
+        # Restore the per-ship loadout cache from the previous session's snapshot
+        # so stored ships' engineering survives an EDMC restart.
+        self._load_cached_loadouts()
         self._thread = threading.Thread(target=self._writer_loop, name="EDClaudeWriter", daemon=True)
         self._thread.start()
+
+    def _load_cached_loadouts(self) -> None:
+        try:
+            with open(self.path, encoding="utf-8") as fh:
+                prev = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            return
+        cached = prev.get("ship_loadouts") or {}
+        for sid, lo in cached.items():
+            try:
+                self.loadouts[int(sid)] = lo
+            except (ValueError, TypeError):
+                continue
+        # Seed the live snapshot so the cache is present before the first event.
+        if cached:
+            with self.lock:
+                self.snapshot["ship_loadouts"] = dict(cached)
 
     def stop(self) -> None:
         self._stop.set()
@@ -379,6 +399,12 @@ class _Connector:
                                  "station": snap["location"]["station"]},
                 }
             snap["ships"] = ships
+
+            # Per-ship loadout cache: the last-known full loadout (modules +
+            # engineering) of every ship we've boarded, so Claude can inspect any
+            # ship in the fleet, not just the current one. Survives restarts via
+            # _load_cached_loadouts().
+            snap["ship_loadouts"] = {str(sid): lo for sid, lo in self.loadouts.items()}
 
             # Materials are kept current in state on every event.
             snap["materials"] = {

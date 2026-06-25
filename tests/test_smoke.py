@@ -269,6 +269,74 @@ check("capi cooldown recommends retry",
 check("capi cooldown did not fire", load.CONNECTOR._pending_nonce is None)
 _cfg_store["querytime"] = 0  # reset so later/other runs aren't affected
 
+# --- Fleet loadout cache -----------------------------------------------------
+# A second ship gets a Loadout event; it should be cached and queryable even
+# though it isn't the current ship.
+SIDEWINDER_LOADOUT = {
+    "timestamp": "2026-06-01T12:20:00Z", "event": "Loadout",
+    "Ship": "sidewinder", "ShipID": 3, "ShipName": "Stiletto", "ShipIdent": "JT-99",
+    "Modules": [
+        {"Slot": "PowerPlant", "Item": "int_powerplant_size2_class3", "On": True,
+         "Priority": 0, "Health": 1.0,
+         "Engineering": {"Engineer": "Felicity Farseer", "BlueprintName": "PowerPlant_Boosted",
+                         "Level": 2, "Quality": 0.5}},
+    ],
+}
+load.journal_entry("CMDR Jim", False, "Shinrarta Dezhra", "Jameson Memorial",
+                   SIDEWINDER_LOADOUT, STATE)  # STATE still says current ship is the Corvette
+load.CONNECTOR._flush()
+sw = srv.get_ship_loadout("Stiletto")
+check("ship loadout cache match by name", sw["matches"] == 1, str(sw.get("matches")))
+check("ship loadout caches non-current ship",
+      sw["ships"][0]["ship"]["type"] == "sidewinder", str(sw["ships"][0]["ship"].get("type")))
+check("ship loadout keeps engineering", sw["ships"][0]["engineered_module_count"] == 1)
+corv = srv.get_ship_loadout("corvette")
+check("ship loadout match by type substring", corv["matches"] == 1
+      and corv["ships"][0]["ship"]["type"] == "federation_corvette", str(corv.get("matches")))
+miss = srv.get_ship_loadout("nonexistent_ship")
+check("ship loadout reports cached ships on miss",
+      miss["matches"] == 0 and len(miss["cached_ships"]) >= 2, str(miss.get("matches")))
+fl = srv.get_fleet()
+sw_fleet = next((s for s in fl["ships"] if str(s["ship_id"]) == "3"), None)
+check("fleet flags detailed loadout", sw_fleet and sw_fleet["has_detailed_loadout"] is True,
+      str(sw_fleet))
+
+# Cache survives a restart: a fresh connector reads the snapshot back on start().
+load.CONNECTOR._flush()
+restarted = load._Connector()
+restarted.start()
+restored = restarted.snapshot.get("ship_loadouts") or {}
+check("loadout cache restored on restart", set(restored.keys()) >= {"3", "7"}, str(sorted(restored)))
+restarted.stop()
+
+# --- Material trade calculator -----------------------------------------------
+# Inventory (from STATE2): Raw has iron(G1), zinc(G2), tin(G3), antimony(G4),
+# cadmium(G3). Encoded has scandatabanks(G1), etc.
+load.CONNECTOR.snapshot["materials"] = {
+    "raw": dict(STATE2["Raw"]), "manufactured": {}, "encoded": dict(STATE2["Encoded"])}
+load.CONNECTOR._flush()
+
+# Trade DOWN within the same raw group: antimony (G4, group 7) -> boron (G3, grp 7)
+# is 1 source : 3 target (cheapest possible).
+boron = srv.plan_material_trades("boron", quantity=3)
+anti = next((o for o in boron["trade_options"] if o["source_symbol"] == "antimony"), None)
+check("trade down same-subcat rate", anti and anti["source_per_target"] == round(1/3, 3),
+      str(anti))
+check("trade down need_to_trade rounds up", anti and anti["need_to_trade"] == 1, str(anti))
+
+# Trade UP one grade, same raw group: boron is grp 7; antimony G4 from a G3... use
+# tin(G3, grp? ) — instead test up within a group we know: zinc G2 grp4 -> cadmium
+# G3 grp3 is cross-subcat + up 1 grade => 6 * 6 = 36 : 1.
+cad = srv.plan_material_trades("cadmium", quantity=1)
+zinc = next((o for o in cad["trade_options"] if o["source_symbol"] == "zinc"), None)
+check("trade up cross-subcat rate is 36:1", zinc and zinc["source_per_target"] == 36.0, str(zinc))
+
+# Type-locked: an Encoded target offers no Raw sources.
+sdb = srv.plan_material_trades("scandatabanks", quantity=1)
+check("trades are type-locked",
+      all(srv._MAT_REF.get(o["source_symbol"], {}).get("type") == "Encoded"
+          for o in sdb["trade_options"]), str([o["source_symbol"] for o in sdb["trade_options"]]))
+
 print()
 if failures:
     print(f"{len(failures)} FAILURES: {failures}")

@@ -46,7 +46,7 @@ if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.6.2"
+VERSION = "0.6.3"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -676,15 +676,20 @@ def plugin_prefs(parent: nb.Notebook, cmdr: str, is_beta: bool) -> tk.Frame:
 
     frame = nb.Frame(parent)
     frame.columnconfigure(1, weight=1)
-    nb.Label(frame, text="Writes ship loadouts & engineering materials to a local").grid(
+    version_text = f"ED Claude Connector — v{VERSION}"
+    if _update_available:
+        version_text += f"  (update v{_update_available} available)"
+    nb.Label(frame, text=version_text).grid(
         row=0, column=0, columnspan=3, sticky=tk.W, padx=8, pady=(8, 0))
+    nb.Label(frame, text="Writes ship loadouts & engineering materials to a local").grid(
+        row=1, column=0, columnspan=3, sticky=tk.W, padx=8, pady=(8, 0))
     nb.Label(frame, text="JSON file for the ED Claude MCP server to read.").grid(
-        row=1, column=0, columnspan=3, sticky=tk.W, padx=8)
+        row=2, column=0, columnspan=3, sticky=tk.W, padx=8)
     nb.Checkbutton(frame, text="Enabled", variable=_enabled_var).grid(
-        row=2, column=0, sticky=tk.W, padx=8, pady=8)
-    nb.Label(frame, text="Snapshot file:").grid(row=3, column=0, sticky=tk.W, padx=8)
+        row=3, column=0, sticky=tk.W, padx=8, pady=8)
+    nb.Label(frame, text="Snapshot file:").grid(row=4, column=0, sticky=tk.W, padx=8)
     nb.EntryMenu(frame, textvariable=_path_var, width=50).grid(
-        row=3, column=1, columnspan=2, sticky=tk.EW, padx=8, pady=4)
+        row=4, column=1, columnspan=2, sticky=tk.EW, padx=8, pady=4)
     return frame
 
 

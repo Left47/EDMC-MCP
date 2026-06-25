@@ -26,6 +26,11 @@ import myNotebook as nb  # type: ignore  # provided by EDMarketConnector
 from config import config  # type: ignore  # provided by EDMarketConnector
 
 try:
+    from theme import theme  # type: ignore  # provided by EDMarketConnector
+except Exception:  # pragma: no cover - older EDMC / running outside the app
+    theme = None  # type: ignore
+
+try:
     from EDMCLogging import get_main_logger  # type: ignore
     logger = get_main_logger()
 except Exception:  # pragma: no cover - fallback for very old EDMC
@@ -41,7 +46,7 @@ if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.6.1"
+VERSION = "0.6.2"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -575,15 +580,17 @@ def plugin_stop() -> None:
 
 
 def _refresh_status_label() -> None:
-    """Make the main-window label reflect the real enabled state (main thread)."""
+    """Make the main-window label reflect the real enabled state (main thread).
+
+    Colours are left to EDMC's theme (see _theme_label) so the text stays legible
+    on the default, dark, and transparent themes — hardcoding e.g. blue made it
+    unreadable on the dark theme's black background."""
     if _status_label is None:
         return
     if CONNECTOR.enabled:
         _status_label["text"] = "ED Claude Connector: Running"
-        _status_label["foreground"] = "green"
     else:
         _status_label["text"] = "ED Claude Connector: Off (enable in Settings)"
-        _status_label["foreground"] = "grey"
     if _update_available:
         # Clickable when we know where the update script lives (recorded by the
         # installer); otherwise just announce it.
@@ -603,7 +610,6 @@ def _on_status_click(event: object = None) -> None:
         _status_label["text"] = (
             f"ED Claude Connector: Updating to v{_update_available}… "
             f"restart EDMC & Claude Desktop when it finishes")
-        _status_label["foreground"] = "blue"
         _status_label["cursor"] = ""
     else:
         _status_label["text"] = (
@@ -635,10 +641,26 @@ def _poll_capi_request() -> None:
             _status_label.after(CAPI_POLL_MS, _poll_capi_request)
 
 
+def _theme_label(widget: tk.Label) -> None:
+    """Hand the label to EDMC's theme so it's coloured like the rest of the main
+    window and re-coloured when the user switches theme. Best-effort: leaving the
+    foreground unset lets the theme own it (orange on dark, system on default)."""
+    if theme is None:
+        return
+    try:
+        if hasattr(theme, "register"):
+            theme.register(widget)
+        if hasattr(theme, "update"):
+            theme.update(widget)
+    except Exception as exc:  # pragma: no cover - never break the UI over theming
+        logger.debug(f"EDClaudeConnector: theme registration skipped: {exc}")
+
+
 def plugin_app(parent: tk.Frame) -> tk.Label:
     global _status_label
     _status_label = tk.Label(parent)
     _status_label.bind("<Button-1>", _on_status_click)
+    _theme_label(_status_label)
     _refresh_status_label()
     # Pick up the background update-check result on the main thread (tkinter-safe).
     _status_label.after(12000, _refresh_status_label)

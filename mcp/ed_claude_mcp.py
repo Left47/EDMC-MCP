@@ -18,9 +18,11 @@ State file location resolution (first match wins):
 """
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import time
+import uuid
 from typing import Any, Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -34,8 +36,20 @@ ENGINEERS_REF_FILE = os.path.join(HERE, "engineers_ref.json")
 mcp = FastMCP("elite-dangerous")
 
 
+CAPI_REQUEST_FILE = "capi_request.json"
+
+
 def _state_path() -> str:
     return os.environ.get("EDCLAUDE_STATE_FILE", DEFAULT_STATE_FILE)
+
+
+def _request_path(state_path: str) -> str:
+    """Sibling file (next to the snapshot) the plugin polls for refresh requests."""
+    return os.path.join(os.path.dirname(state_path) or ".", CAPI_REQUEST_FILE)
+
+
+def _utcnow_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _load_json_file(path: str, fallback: Any) -> Any:
@@ -118,6 +132,7 @@ def get_status() -> dict[str, Any]:
     snap = _load_snapshot()
     ship = snap.get("current_ship", {})
     age = snap.get("_age_seconds")
+    capi = snap.get("capi") or {}
     return {
         "commander": snap.get("cmdr"),
         "current_ship": {"type": ship.get("type"), "name": ship.get("name"),
@@ -130,6 +145,9 @@ def get_status() -> dict[str, Any]:
         "data_age_seconds": age,
         "data_is_fresh": age is not None and age < 120,
         "game_version": (snap.get("game") or {}).get("version"),
+        # Last live Frontier CAPI pull. Use request_capi_refresh() to fetch a new one.
+        "capi": {"status": capi.get("status"),
+                 "responded_at": capi.get("responded_at")} if capi else None,
     }
 
 
@@ -392,6 +410,87 @@ def get_engineer_status(
     return {"count": len(results), "status_counts": counts, "engineers": results,
             "note": "Location/unlock data is reference-only; verify in-game.",
             "data_age_seconds": snap.get("_age_seconds")}
+
+
+@mcp.tool()
+def request_capi_refresh(wait_seconds: float = 15.0) -> dict[str, Any]:
+    """Ask EDMarketConnector to pull a fresh live update from Frontier's
+    Companion API (CAPI) — the same thing EDMC's "Update" button does.
+
+    This fetches authoritative data straight from Frontier's servers that the
+    game does NOT always write to the journal on its own: the current ship's
+    live loadout (including engineering), the full fleet, and credits/location.
+    Use it when you need the very latest state — e.g. right after the commander
+    re-rolls engineering, swaps modules, or buys/sells a ship — rather than
+    relying on whatever the journal happened to emit.
+
+    Frontier enforces a global 60s cooldown (shared with EDMC's own pulls, e.g.
+    on docking). If it's still active the refresh is skipped and this returns
+    status 'cooldown' with 'retry_after_seconds' telling you when to try again.
+    Requires EDMC to be running with this plugin enabled and signed in to Frontier.
+
+    Args:
+        wait_seconds: how long to wait for fresh data to arrive (1-60, default 15).
+
+    Returns one of:
+      - status 'refreshed': the captured live CAPI data (also under the 'capi'
+        key of get_full_snapshot()).
+      - status 'cooldown': with 'retry_after_seconds' / 'cooldown_until'.
+      - status 'no_data' / 'not_acknowledged': nothing arrived in time (see note).
+    """
+    path = _state_path()
+    if not os.path.exists(path):
+        raise RuntimeError(
+            f"No snapshot found at {path}. Is EDMarketConnector running with the "
+            f"EDClaudeConnector plugin enabled? You can also set EDCLAUDE_STATE_FILE "
+            f"to point at the file."
+        )
+
+    nonce = uuid.uuid4().hex
+    req_path = _request_path(path)
+    try:
+        os.makedirs(os.path.dirname(req_path) or ".", exist_ok=True)
+        tmp = req_path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump({"nonce": nonce, "requested_at": _utcnow_iso()}, fh)
+        os.replace(tmp, req_path)  # atomic on the same filesystem
+    except OSError as exc:
+        raise RuntimeError(f"Could not write CAPI request file at {req_path}: {exc}")
+
+    deadline = time.time() + max(1.0, min(wait_seconds, 60.0))
+    acknowledged = False
+    while time.time() < deadline:
+        time.sleep(0.5)
+        try:
+            with open(path, encoding="utf-8") as fh:
+                capi = (json.load(fh).get("capi") or {})
+        except (OSError, json.JSONDecodeError):
+            continue
+        if capi.get("request_nonce") == nonce:
+            acknowledged = True
+        if capi.get("response_nonce") == nonce:
+            if capi.get("status") == "cooldown":
+                remaining = capi.get("cooldown_remaining_seconds")
+                retry_after = int(remaining + 0.999) if isinstance(remaining, (int, float)) else None
+                note = "Frontier's global CAPI cooldown is active, so EDMC skipped " \
+                       "the live update (its 'Update' button is greyed out too)."
+                if retry_after is not None:
+                    note += f" Retry in about {retry_after}s (cooldown ends {capi.get('cooldown_until')})."
+                return {"status": "cooldown", "retry_after_seconds": retry_after,
+                        "cooldown_until": capi.get("cooldown_until"), "note": note}
+            return {"status": "refreshed", "capi": capi,
+                    "note": "Fresh live data captured from Frontier's CAPI."}
+
+    if acknowledged:
+        return {"status": "no_data", "request_acknowledged": True,
+                "note": "EDMC fired the request but no fresh CAPI data arrived in "
+                        "time. Likely not signed in to Frontier, the CAPI servers "
+                        "are slow/down, or the wait window was too short — try a "
+                        "larger wait_seconds."}
+    return {"status": "not_acknowledged", "request_acknowledged": False,
+            "note": "The request was written but the EDMC plugin didn't pick it up "
+                    "within the wait window. Is EDMarketConnector running with the "
+                    "ED Claude Connector plugin enabled?"}
 
 
 @mcp.tool()

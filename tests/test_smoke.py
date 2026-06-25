@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import types
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -191,6 +192,82 @@ unlocked = srv.get_engineer_status(status="unlocked")
 check("engineer status filter (unlocked)",
       all(e["status"] == "Unlocked" for e in unlocked["engineers"])
       and len(unlocked["engineers"]) == 2, str(len(unlocked["engineers"])))
+
+# --- Live CAPI refresh round-trip --------------------------------------------
+# The MCP tool writes a request file; the plugin (main thread) picks it up and
+# fires a CAPI query; the cmdr_data hook captures the response. Simulate the
+# plugin side in a background thread while the MCP tool waits. The writer thread
+# was stopped earlier, so the simulated plugin flushes explicitly.
+import threading  # noqa: E402
+
+SAMPLE_CAPI = {
+    "commander": {"name": "CMDR Jim", "credits": 1234567890, "docked": True},
+    "lastSystem": {"name": "Shinrarta Dezhra"},
+    "lastStarport": {"name": "Jameson Memorial"},
+    "ship": {
+        "id": 7, "name": "federation_corvette", "shipName": "Bishop", "shipID": "JT-01",
+        "value": {"total": 108000000},
+        "modules": {
+            "PowerPlant": {"module": {
+                "name": "int_powerplant_size8_class5", "on": True, "priority": 0,
+                "health": 1000000, "engineer": {"engineerName": "Hera Tani"},
+                "recipeName": "PowerPlant_Armoured",
+                "modifications": {"integrity": 220.0}}},
+            "MainEngines": {"module": {
+                "name": "int_engine_size7_class5", "on": True, "priority": 0,
+                "health": 1000000}},
+        },
+    },
+    "ships": {"7": {"id": 7, "name": "federation_corvette", "shipName": "Bishop",
+                    "starsystem": {"name": "Shinrarta Dezhra"},
+                    "station": {"name": "Jameson Memorial"}}},
+}
+
+def _fake_plugin_side():
+    for _ in range(100):
+        time.sleep(0.1)
+        load.CONNECTOR.poll_request()  # idempotent; sets _pending_nonce on new request
+        if load.CONNECTOR._pending_nonce:
+            load.CONNECTOR.record_capi(SAMPLE_CAPI, False)
+            load.CONNECTOR._flush()  # writer thread is stopped; flush explicitly
+            return
+
+t = threading.Thread(target=_fake_plugin_side, daemon=True)
+t.start()
+capi_res = srv.request_capi_refresh(wait_seconds=12)
+t.join(timeout=15)
+check("capi refresh refreshed", capi_res["status"] == "refreshed", str(capi_res.get("status")))
+capi = capi_res.get("capi", {})
+check("capi current ship captured", (capi.get("current_ship") or {}).get("type") == "federation_corvette",
+      str((capi.get("current_ship") or {}).get("type")))
+check("capi engineering captured",
+      (capi.get("current_ship") or {}).get("engineered_module_count") == 1,
+      str((capi.get("current_ship") or {}).get("engineered_module_count")))
+check("capi fleet captured", len(capi.get("fleet") or []) == 1, str(len(capi.get("fleet") or [])))
+check("capi surfaced in get_status", (srv.get_status().get("capi") or {}).get("status") == "received")
+
+# Cooldown path: simulate EDMC having just queried (querytime ~ now) so the
+# plugin reports cooldown instead of firing, and the MCP recommends a retry.
+_cfg_store["querytime"] = int(time.time())  # last CAPI query was just now
+def _fake_plugin_cooldown():
+    for _ in range(100):
+        time.sleep(0.1)
+        load.CONNECTOR.poll_request()
+        cap = load.CONNECTOR.snapshot.get("capi") or {}
+        if cap.get("status") == "cooldown":
+            load.CONNECTOR._flush()  # writer thread stopped; flush explicitly
+            return
+
+t2 = threading.Thread(target=_fake_plugin_cooldown, daemon=True)
+t2.start()
+cd = srv.request_capi_refresh(wait_seconds=12)
+t2.join(timeout=15)
+check("capi cooldown status", cd["status"] == "cooldown", str(cd.get("status")))
+check("capi cooldown recommends retry",
+      isinstance(cd.get("retry_after_seconds"), int) and 0 < cd["retry_after_seconds"] <= 61,
+      str(cd.get("retry_after_seconds")))
+check("capi cooldown did not fire", load.CONNECTOR._pending_nonce is None)
+_cfg_store["querytime"] = 0  # reset so later/other runs aren't affected
 
 print()
 if failures:

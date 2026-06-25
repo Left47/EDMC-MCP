@@ -35,7 +35,8 @@ The MCP server exposes these tools:
 | `get_blueprint_requirements` | Engineering blueprints & experimental effects with per-grade material costs, compared against your inventory (need / have / short, and whether you can afford the roll now) |
 | `get_engineer_status` | Engineers with live unlock status (Unlocked + rank, Invited, Known, Unknown) merged with location, access & unlock requirements, specialisations, and max grade |
 | `get_fleet` | Your ships (current + stored, as last seen at a shipyard) |
-| `get_full_snapshot` | The raw snapshot |
+| `request_capi_refresh` | Ask EDMC to pull a fresh live update from Frontier's Companion API (the same as EDMC's **Update** button) — the authoritative current loadout, fleet, and credits/location, including details the game doesn't write to the journal. If Frontier's global cooldown is active it returns a `cooldown` status with `retry_after_seconds` |
+| `get_full_snapshot` | The raw snapshot (includes the last captured live CAPI data under `capi`) |
 | `refresh_reference_data` | Re-download the materials & blueprint reference data (run if the game adds new content the tools don't recognise) |
 
 ## Prerequisites
@@ -159,6 +160,7 @@ With Elite Dangerous **and** EDMarketConnector running, ask Claude:
 - *"Which engineers do Power Distributor mods, and which have I unlocked?"* (uses `get_engineer_status`)
 - *"What do I still need to unlock the engineers I haven't got yet?"*
 - *"What shield-related encoded data am I low on?"*
+- *"Pull a fresh live update from Frontier and tell me my exact current loadout."* (uses `request_capi_refresh`)
 
 ## Updating
 
@@ -179,7 +181,12 @@ these automatically.)
 
 - Materials are always current (the journal `state` tracks running totals).
 - Detailed loadout only updates when the game emits a `Loadout` event (ship
-  swap, outfitting changes, login). Visit outfitting once to populate it.
+  swap, outfitting changes, login). Visit outfitting once to populate it — or
+  ask Claude to run `request_capi_refresh` to pull the live loadout from Frontier.
+- `request_capi_refresh` is subject to Frontier's global ~60s cooldown (shared
+  with EDMC's **Update** button and its automatic pulls). If it's active the tool
+  returns a `cooldown` status with `retry_after_seconds` rather than firing. EDMC
+  must be signed in to Frontier.
 - Stored-ship details only refresh when you dock at a shipyard.
 - Data freshness is reported as `data_age_seconds` — if it's large, the game or
   EDMC probably isn't running.

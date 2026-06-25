@@ -10,10 +10,12 @@ All data stays on your machine. Nothing is sent anywhere by this plugin.
 """
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import queue
 import threading
+import time
 import tkinter as tk
 from typing import Any, Optional
 
@@ -32,13 +34,19 @@ if not hasattr(config, "get_str"):
     config.get_str = config.get  # type: ignore[attr-defined]
 if not hasattr(config, "get_bool"):
     config.get_bool = lambda key, default=False: bool(config.getint(key))  # type: ignore
+if not hasattr(config, "get_int"):
+    config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
 WRITE_DEBOUNCE_SECONDS = 1.5
+# How often (ms, main thread) we check for a queued CAPI-refresh request.
+CAPI_POLL_MS = 2000
+# Sibling file (next to the snapshot) the MCP server writes to request a refresh.
+CAPI_REQUEST_FILE = "capi_request.json"
 
 # Set by the background update check; surfaced on the main-window label.
 _update_available: Optional[str] = None
@@ -83,6 +91,131 @@ def default_state_path() -> str:
     return os.path.join(os.path.expanduser("~"), ".elite-dangerous-claude", "state.json")
 
 
+def _utcnow_iso() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _request_path(state_path: str) -> str:
+    """Path of the refresh-request file the MCP server writes next to the snapshot."""
+    return os.path.join(os.path.dirname(state_path) or ".", CAPI_REQUEST_FILE)
+
+
+def _read_request(state_path: str) -> Optional[dict[str, Any]]:
+    try:
+        with open(_request_path(state_path), encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+# Fallback if the EDMC-provided constant can't be imported (matches EDMC's value).
+_DEFAULT_CAPI_COOLDOWN = 60
+
+
+def _capi_cooldown_remaining() -> float:
+    """Seconds until EDMC will allow another live CAPI query — based on the
+    timestamp of the last query (which EDMC persists to config as 'querytime',
+    bumped on every CAPI request including its own automatic ones) and Frontier's
+    global cooldown. Returns 0.0 when a query is allowed right now. Runs on the
+    same machine as EDMC, so the clocks match."""
+    try:
+        from companion import capi_query_cooldown as cooldown  # type: ignore
+    except Exception:
+        cooldown = _DEFAULT_CAPI_COOLDOWN
+    try:
+        last = config.get_int("querytime", default=0)
+    except Exception:
+        last = 0
+    if not last:
+        return 0.0
+    remaining = (last + cooldown) - time.time()
+    return remaining if remaining > 0 else 0.0
+
+
+def _iso_in(seconds: float) -> str:
+    """ISO-8601 UTC timestamp `seconds` from now."""
+    dt = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=seconds)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# --- Frontier CAPI parsing ---------------------------------------------------
+# CAPI ("Companion API") data arrives via the cmdr_data hook and carries the
+# authoritative live loadout/fleet straight from Frontier — including details
+# the game doesn't always write to the journal. Its shape differs from the
+# journal's, so we surface the useful raw fields rather than risk mis-mapping.
+
+def _capi_engineering(mod: dict[str, Any]) -> Optional[dict[str, Any]]:
+    if not isinstance(mod, dict):
+        return None
+    engineer = mod.get("engineer")
+    mods = mod.get("modifications") or mod.get("modifiers")
+    special = mod.get("specialModifications")
+    blueprint = mod.get("recipeName") or mod.get("blueprintName")
+    if not any((engineer, mods, special, blueprint)):
+        return None
+    out: dict[str, Any] = {}
+    if blueprint:
+        out["blueprint"] = blueprint
+    if special:
+        out["experimental"] = special
+    if engineer is not None:
+        out["engineer"] = engineer
+    if mods is not None:
+        out["modifications"] = mods
+    return out
+
+
+def _capi_current_ship(ship: dict[str, Any]) -> dict[str, Any]:
+    modules = []
+    for slot, entry in (ship.get("modules") or {}).items():
+        mod = entry.get("module") if isinstance(entry, dict) else None
+        if not isinstance(mod, dict):
+            continue
+        modules.append({
+            "slot": slot,
+            "item": mod.get("name"),
+            "on": mod.get("on"),
+            "priority": mod.get("priority"),
+            "health": mod.get("health"),
+            "value": mod.get("value"),
+            "engineering": _capi_engineering(mod),
+        })
+    value = ship.get("value")
+    return {
+        "ship_id": ship.get("id"),
+        "type": ship.get("name"),
+        "name": ship.get("shipName"),
+        "ident": ship.get("shipID"),
+        "value": value.get("total") if isinstance(value, dict) else value,
+        "module_count": len(modules),
+        "engineered_module_count": sum(1 for m in modules if m["engineering"]),
+        "modules": modules,
+    }
+
+
+def _capi_fleet(ships: Any) -> list[dict[str, Any]]:
+    if isinstance(ships, dict):
+        items = list(ships.values())
+    elif isinstance(ships, list):
+        items = ships
+    else:
+        return []
+    out = []
+    for s in items:
+        if not isinstance(s, dict):
+            continue
+        value = s.get("value")
+        out.append({
+            "ship_id": s.get("id"),
+            "type": s.get("name"),
+            "name": s.get("shipName"),
+            "system": (s.get("starsystem") or {}).get("name"),
+            "station": (s.get("station") or {}).get("name"),
+            "value": value.get("total") if isinstance(value, dict) else value,
+        })
+    return out
+
+
 def _normalize_engineers(raw: dict[str, Any]) -> dict[str, Any]:
     """EDMC stores state['Engineers'] as name -> (Rank, RankProgress) once an
     engineer is unlocked, or a status string ('Known'/'Invited'/...) otherwise.
@@ -114,12 +247,20 @@ class _Connector:
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        # CAPI-refresh request tracking (touched only on the main thread).
+        self._last_request_nonce: Optional[str] = None
+        self._pending_nonce: Optional[str] = None
 
     # -- lifecycle ------------------------------------------------------------
     def start(self) -> None:
         self.path = config.get_str(CONFIG_PATH_KEY) or default_state_path()
         # Enabled by default; persisted as int (1/0) by prefs_changed.
         self.enabled = bool(config.get_bool(CONFIG_ENABLED_KEY, default=True))
+        # Seed the last-seen request nonce so a stale request file left over from
+        # a previous session doesn't fire a spurious refresh on startup.
+        existing = _read_request(self.path)
+        if existing:
+            self._last_request_nonce = existing.get("nonce")
         self._thread = threading.Thread(target=self._writer_loop, name="EDClaudeWriter", daemon=True)
         self._thread.start()
 
@@ -252,6 +393,86 @@ class _Connector:
 
         self.mark_dirty()
 
+    # -- live CAPI refresh ----------------------------------------------------
+    def poll_request(self) -> None:
+        """Main-thread: pick up a refresh request from the MCP server and ask
+        EDMC to fire a live CAPI query. Cheap enough to run on a short timer."""
+        if not self.enabled:
+            return
+        req = _read_request(self.path)
+        if not req:
+            return
+        nonce = req.get("nonce")
+        if not nonce or nonce == self._last_request_nonce:
+            return
+        self._last_request_nonce = nonce
+
+        # Honour Frontier's global cooldown: firing during it is a no-op, so
+        # report it (with when to retry) instead of leaving the caller to wait.
+        remaining = _capi_cooldown_remaining()
+        if remaining > 0:
+            self._pending_nonce = None
+            with self.lock:
+                capi = dict(self.snapshot.get("capi") or {})
+                capi.update({
+                    "status": "cooldown",
+                    "request_nonce": nonce,
+                    "requested_at": _utcnow_iso(),
+                    # Mark this request handled so the MCP server returns at once.
+                    "response_nonce": nonce,
+                    "cooldown_remaining_seconds": round(remaining, 1),
+                    "cooldown_until": _iso_in(remaining),
+                })
+                self.snapshot["capi"] = capi
+            self.mark_dirty()
+            logger.info(f"EDClaudeConnector: CAPI refresh requested but on cooldown "
+                        f"({remaining:.0f}s remaining)")
+            return
+
+        self._pending_nonce = nonce
+        with self.lock:
+            capi = dict(self.snapshot.get("capi") or {})
+            capi.update({
+                "status": "requested",
+                "request_nonce": nonce,
+                "requested_at": _utcnow_iso(),
+            })
+            self.snapshot["capi"] = capi
+        self.mark_dirty()
+        _fire_capi_update()
+
+    def record_capi(self, data: dict[str, Any], is_beta: bool) -> None:
+        """Capture a Frontier CAPI response (delivered via the cmdr_data hook).
+        Records the live ship loadout and fleet, tagged with the request nonce
+        so the MCP server can tell its refresh request was fulfilled."""
+        commander = data.get("commander") or {}
+        ship = data.get("ship") or {}
+        with self.lock:
+            prev = self.snapshot.get("capi") or {}
+            self.snapshot["capi"] = {
+                "status": "received",
+                "responded_at": _utcnow_iso(),
+                "request_nonce": prev.get("request_nonce"),
+                "requested_at": prev.get("requested_at"),
+                # None when this CAPI update wasn't triggered by a Claude request
+                # (e.g. EDMC's automatic pull on docking) — still worth capturing.
+                "response_nonce": self._pending_nonce,
+                "is_beta": bool(is_beta),
+                "commander": {
+                    "name": commander.get("name"),
+                    "credits": commander.get("credits"),
+                    "docked": commander.get("docked"),
+                },
+                "location": {
+                    "system": (data.get("lastSystem") or {}).get("name"),
+                    "station": (data.get("lastStarport") or {}).get("name"),
+                },
+                "current_ship": _capi_current_ship(ship) if ship else None,
+                "fleet": _capi_fleet(data.get("ships")),
+            }
+        self._pending_nonce = None
+        self.mark_dirty()
+
 
 CONNECTOR = _Connector()
 
@@ -289,12 +510,38 @@ def _refresh_status_label() -> None:
         _status_label["text"] += f"  (update v{_update_available} available)"
 
 
+def _fire_capi_update() -> None:
+    """Generate the virtual event EDMC binds to its "Update" button, firing a
+    live CAPI query. EDMC enforces its own global cooldown, so calling this while
+    on cooldown is a harmless no-op (no fresh data simply won't arrive)."""
+    if _status_label is None:
+        return
+    try:
+        _status_label.event_generate("<<Invoke>>", when="tail")
+        logger.info("EDClaudeConnector: requested a live CAPI update (<<Invoke>>)")
+    except tk.TclError as exc:
+        logger.error(f"EDClaudeConnector: could not fire CAPI update: {exc}")
+
+
+def _poll_capi_request() -> None:
+    """Main-thread timer: service any queued CAPI-refresh request, then reschedule."""
+    try:
+        CONNECTOR.poll_request()
+    except Exception as exc:  # never let the timer die
+        logger.error(f"EDClaudeConnector CAPI poll error: {exc}", exc_info=True)
+    finally:
+        if _status_label is not None:
+            _status_label.after(CAPI_POLL_MS, _poll_capi_request)
+
+
 def plugin_app(parent: tk.Frame) -> tk.Label:
     global _status_label
     _status_label = tk.Label(parent)
     _refresh_status_label()
     # Pick up the background update-check result on the main thread (tkinter-safe).
     _status_label.after(12000, _refresh_status_label)
+    # Start the timer that lets Claude (via the MCP server) request CAPI refreshes.
+    _status_label.after(CAPI_POLL_MS, _poll_capi_request)
     return _status_label
 
 
@@ -336,3 +583,17 @@ def journal_entry(cmdr: str, is_beta: bool, system: Optional[str], station: Opti
     except Exception as exc:  # never let a plugin error disrupt EDMC
         logger.error(f"EDClaudeConnector journal_entry error: {exc}", exc_info=True)
     return None
+
+
+def cmdr_data(data: dict[str, Any], is_beta: bool) -> None:
+    """EDMC hook: fresh Frontier CAPI data (Live galaxy). Fired both by EDMC's
+    own pulls and by the refreshes we request via _fire_capi_update()."""
+    try:
+        CONNECTOR.record_capi(data, is_beta)
+    except Exception as exc:  # never let a plugin error disrupt EDMC
+        logger.error(f"EDClaudeConnector cmdr_data error: {exc}", exc_info=True)
+
+
+def cmdr_data_legacy(data: dict[str, Any], is_beta: bool) -> None:
+    """EDMC hook: fresh Frontier CAPI data for the Legacy galaxy."""
+    cmdr_data(data, is_beta)

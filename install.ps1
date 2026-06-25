@@ -43,6 +43,11 @@ if (-not (Test-Path $pluginRoot)) {
 }
 New-Item -ItemType Directory -Force -Path $pluginDest | Out-Null
 Copy-Item -Path (Join-Path $pluginSrc '*') -Destination $pluginDest -Recurse -Force
+# Record where we installed from so the plugin's "click to update" can find
+# update.bat (the plugin folder otherwise has no idea where the repo lives).
+[System.IO.File]::WriteAllText(
+    (Join-Path $pluginDest 'install_info.json'),
+    (@{ repo = $repo; version_installed_from = 'install.ps1' } | ConvertTo-Json))
 Write-Host "[1/3] Plugin installed -> $pluginDest" -ForegroundColor Green
 
 # --- 2. Locate a WORKING Python and install the MCP dependency --------------

@@ -5,3 +5,4 @@ state.json
 *.tmp
 .DS_Store
 EDClaudeConnector.zip
+install_info.json

@@ -44,6 +44,9 @@ PLUGIN_DEST="$PLUGIN_ROOT/EDClaudeConnector"
 [[ -d "$PLUGIN_SRC" ]] || { echo "Plugin source not found at $PLUGIN_SRC" >&2; exit 1; }
 mkdir -p "$PLUGIN_DEST"
 cp -R "$PLUGIN_SRC/." "$PLUGIN_DEST/"
+# Record where we installed from so the plugin's "click to update" can find
+# update.sh (the plugin folder otherwise has no idea where the repo lives).
+printf '{"repo": "%s", "version_installed_from": "install.sh"}\n' "$REPO" > "$PLUGIN_DEST/install_info.json"
 echo "[1/3] Plugin installed -> $PLUGIN_DEST"
 
 # --- 2. Create an isolated venv and install the MCP dependency --------------

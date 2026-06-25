@@ -169,11 +169,17 @@ With Elite Dangerous **and** EDMarketConnector running, ask Claude:
 ## Updating
 
 **Code (plugin + server):** the plugin checks GitHub for a newer release on
-startup and, if one exists, appends `(update vX available)` to the status line
-on the EDMC main window. To update, run **`update.bat`** (Windows) or
-**`./update.sh`** (Linux) from your installed folder — it pulls the latest
-(git *or* ZIP download), then re-runs the installer. Restart EDMC and Claude
-Desktop afterward.
+startup and, if one exists, appends `(update vX — click to update)` to the
+status line on the EDMC main window. **Click that label** to run the updater
+automatically; then restart EDMC and Claude Desktop when it finishes. You can
+still update by hand by running **`update.bat`** (Windows) or **`./update.sh`**
+(Linux) from your installed folder — both pull the latest (git *or* ZIP
+download) and re-run the installer.
+
+> The clickable label needs to know where you installed from, which the
+> installer records (in `install_info.json` next to the plugin). The very first
+> time you update onto this feature, run `update.bat` by hand once; after that
+> the label is clickable.
 
 **Reference data (materials & blueprints):** kept in `materials_ref.json` /
 `blueprints_ref.json`, generated from community sources. If the game adds new

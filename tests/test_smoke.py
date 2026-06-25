@@ -337,6 +337,25 @@ check("trades are type-locked",
       all(srv._MAT_REF.get(o["source_symbol"], {}).get("type") == "Encoded"
           for o in sdb["trade_options"]), str([o["source_symbol"] for o in sdb["trade_options"]]))
 
+# --- Click-to-update wiring --------------------------------------------------
+# The installer records the repo path in install_info.json next to the plugin;
+# the plugin reads it so the status label can launch the right update script.
+fake_repo = tempfile.mkdtemp()
+for _name in ("update.sh", "update.bat"):
+    open(os.path.join(fake_repo, _name), "w").close()
+fake_plugin_dir = tempfile.mkdtemp()
+with open(os.path.join(fake_plugin_dir, "install_info.json"), "w") as fh:
+    json.dump({"repo": fake_repo}, fh)
+check("repo path read from install_info", load._read_repo_path(fake_plugin_dir) == fake_repo)
+load._repo_path = load._read_repo_path(fake_plugin_dir)
+up = load._updater_path()
+check("updater path resolves to a script", up is not None
+      and os.path.basename(up) in ("update.sh", "update.bat"), str(up))
+load._repo_path = None
+check("no updater path without repo info", load._updater_path() is None)
+check("missing install_info yields no repo path",
+      load._read_repo_path(tempfile.mkdtemp()) is None)
+
 print()
 if failures:
     print(f"{len(failures)} FAILURES: {failures}")

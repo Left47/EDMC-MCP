@@ -14,6 +14,9 @@ import datetime
 import json
 import os
 import queue
+import shutil
+import subprocess
+import sys
 import threading
 import time
 import tkinter as tk
@@ -38,7 +41,7 @@ if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -507,10 +510,59 @@ _enabled_var: Optional[tk.IntVar] = None
 _path_var: Optional[tk.StringVar] = None
 _status_label: Optional[tk.Label] = None
 
+# Where the connector repo (with the update scripts) was installed from. Recorded
+# by the installer in install_info.json next to this plugin, so the "click to
+# update" action knows which update.bat / update.sh to run.
+_repo_path: Optional[str] = None
+
+
+def _read_repo_path(plugin_dir: str) -> Optional[str]:
+    try:
+        with open(os.path.join(plugin_dir, "install_info.json"), encoding="utf-8") as fh:
+            repo = json.load(fh).get("repo")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return None
+    return repo if repo and os.path.isdir(repo) else None
+
+
+def _updater_path() -> Optional[str]:
+    """Path of the platform update script, if we know the repo and it exists."""
+    if not _repo_path:
+        return None
+    name = "update.bat" if sys.platform.startswith("win") else "update.sh"
+    path = os.path.join(_repo_path, name)
+    return path if os.path.isfile(path) else None
+
+
+def _launch_updater() -> bool:
+    """Run the update script (in a visible console where possible) and return
+    whether it was launched. Best-effort and never raises."""
+    updater = _updater_path()
+    if not updater:
+        return False
+    try:
+        if sys.platform.startswith("win"):
+            os.startfile(updater)  # type: ignore[attr-defined]  # opens its own console
+            return True
+        # Linux: prefer a visible terminal so the user can watch progress.
+        hold = f'"{updater}"; echo; read -n1 -rsp "Update finished - press any key to close..."'
+        for term in (["x-terminal-emulator", "-e"], ["gnome-terminal", "--"],
+                     ["konsole", "-e"], ["xterm", "-e"]):
+            if shutil.which(term[0]):
+                subprocess.Popen(term + ["bash", "-lc", hold], cwd=_repo_path)
+                return True
+        subprocess.Popen(["bash", updater], cwd=_repo_path)  # headless fallback
+        return True
+    except Exception as exc:  # pragma: no cover - platform/launch quirks
+        logger.error(f"EDClaudeConnector: failed to launch updater: {exc}")
+        return False
+
 
 # === EDMC plugin entry points ===============================================
 
 def plugin_start3(plugin_dir: str) -> str:
+    global _repo_path
+    _repo_path = _read_repo_path(plugin_dir)
     CONNECTOR.start()
     logger.info(f"EDClaudeConnector v{VERSION} started; snapshot path: {CONNECTOR.path}")
     threading.Thread(target=_check_for_update, name="EDClaudeUpdateCheck", daemon=True).start()
@@ -533,7 +585,30 @@ def _refresh_status_label() -> None:
         _status_label["text"] = "Claude: off (enable in Settings)"
         _status_label["foreground"] = "grey"
     if _update_available:
-        _status_label["text"] += f"  (update v{_update_available} available)"
+        # Clickable when we know where the update script lives (recorded by the
+        # installer); otherwise just announce it.
+        if _updater_path():
+            _status_label["text"] += f"  (update v{_update_available} — click to update)"
+            _status_label["cursor"] = "hand2"
+        else:
+            _status_label["text"] += f"  (update v{_update_available} available)"
+            _status_label["cursor"] = ""
+
+
+def _on_status_click(event: object = None) -> None:
+    """Run the updater when the user clicks the label and an update is available."""
+    if not _update_available or _status_label is None:
+        return
+    if _launch_updater():
+        _status_label["text"] = (
+            f"Claude: updating to v{_update_available}… "
+            f"restart EDMC & Claude Desktop when it finishes")
+        _status_label["foreground"] = "blue"
+        _status_label["cursor"] = ""
+    else:
+        _status_label["text"] = (
+            f"Claude: update v{_update_available} ready — "
+            f"run update.bat in your EDMC-MCP folder")
 
 
 def _fire_capi_update() -> None:
@@ -563,6 +638,7 @@ def _poll_capi_request() -> None:
 def plugin_app(parent: tk.Frame) -> tk.Label:
     global _status_label
     _status_label = tk.Label(parent)
+    _status_label.bind("<Button-1>", _on_status_click)
     _refresh_status_label()
     # Pick up the background update-check result on the main thread (tkinter-safe).
     _status_label.after(12000, _refresh_status_label)

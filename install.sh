@@ -101,7 +101,7 @@ cat <<'DONE'
 
 Done.
 Next:
-  1. Restart EDMarketConnector (look for 'Claude: ready' on the main window).
+  1. Restart EDMarketConnector (look for 'ED Claude Connector: Running' on the main window).
   2. Restart Claude Desktop.
   3. Launch Elite Dangerous, then ask Claude about your loadout or materials.
 DONE

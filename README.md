@@ -92,8 +92,9 @@ EDMC bundles its own Python, so the plugin needs **no pip installs**.
    Linux `~/.config/EDMarketConnector/plugins`.)
 2. Copy the **`EDClaudeConnector`** folder (the one containing `load.py`) into
    that plugins folder.
-3. Restart EDMarketConnector. You should see a green **"Claude: ready"** line on
-   the main window, and an **ED Claude Connector** tab under Settings.
+3. Restart EDMarketConnector. You should see a green **"ED Claude Connector:
+   Running"** line on the main window, and an **ED Claude Connector** tab under
+   Settings.
 
 The snapshot is written to `~/.elite-dangerous-claude/state.json` by default
 (configurable in the plugin's settings tab).

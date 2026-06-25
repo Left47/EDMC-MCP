@@ -164,6 +164,6 @@ $written | ForEach-Object { Write-Host "        $_" }
 
 Write-Host "`nDone." -ForegroundColor Cyan
 Write-Host "Next:"
-Write-Host "  1. Restart EDMarketConnector (look for 'Claude: ready' on the main window)."
+Write-Host "  1. Restart EDMarketConnector (look for 'ED Claude Connector: Running' on the main window)."
 Write-Host "  2. Restart Claude Desktop."
 Write-Host "  3. Launch Elite Dangerous, then ask Claude about your loadout or materials."

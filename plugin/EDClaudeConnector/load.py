@@ -41,7 +41,7 @@ if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.6.0"
+VERSION = "0.6.1"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -579,10 +579,10 @@ def _refresh_status_label() -> None:
     if _status_label is None:
         return
     if CONNECTOR.enabled:
-        _status_label["text"] = "Claude: on"
+        _status_label["text"] = "ED Claude Connector: Running"
         _status_label["foreground"] = "green"
     else:
-        _status_label["text"] = "Claude: off (enable in Settings)"
+        _status_label["text"] = "ED Claude Connector: Off (enable in Settings)"
         _status_label["foreground"] = "grey"
     if _update_available:
         # Clickable when we know where the update script lives (recorded by the
@@ -601,13 +601,13 @@ def _on_status_click(event: object = None) -> None:
         return
     if _launch_updater():
         _status_label["text"] = (
-            f"Claude: updating to v{_update_available}… "
+            f"ED Claude Connector: Updating to v{_update_available}… "
             f"restart EDMC & Claude Desktop when it finishes")
         _status_label["foreground"] = "blue"
         _status_label["cursor"] = ""
     else:
         _status_label["text"] = (
-            f"Claude: update v{_update_available} ready — "
+            f"ED Claude Connector: Update v{_update_available} ready — "
             f"run update.bat in your EDMC-MCP folder")
 
 

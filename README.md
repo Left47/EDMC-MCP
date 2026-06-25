@@ -167,6 +167,56 @@ With Elite Dangerous **and** EDMarketConnector running, ask Claude:
 - *"Show me the engineering on my stored Anaconda."* (uses `get_ship_loadout`)
 - *"Pull a fresh live update from Frontier and tell me my exact current loadout."* (uses `request_capi_refresh`)
 
+## Use with Ollama (optional)
+
+The MCP server isn't Claude-specific — any MCP client can use it. To drive it
+with a **local model via [Ollama](https://ollama.com/)**, the simplest route is
+[**ollmcp**](https://github.com/jonigl/mcp-client-for-ollama), a terminal MCP
+client for Ollama. No changes to this project are needed — it runs the *same*
+server with the *same* config shape Claude Desktop uses.
+
+1. Install Ollama and pull a **tool-capable** model (e.g. a recent Llama 3.x,
+   Qwen, or Mistral — the model must support tool calling, or none of the tools
+   will fire).
+2. Run `ollmcp` (no install needed with [uv](https://docs.astral.sh/uv/)) and
+   register this server. Point `command` at the venv Python the installer
+   created:
+
+   ```bash
+   # Windows
+   uvx ollmcp mcp add elite-dangerous -- "C:\Users\you\EDMC-MCP\.venv\Scripts\python.exe" "C:\Users\you\EDMC-MCP\mcp\ed_claude_mcp.py"
+
+   # Linux
+   uvx ollmcp mcp add elite-dangerous -- /path/to/EDMC-MCP/.venv/bin/python /path/to/EDMC-MCP/mcp/ed_claude_mcp.py
+   ```
+
+   Or add it to `ollmcp`'s JSON config (same `mcpServers` format as Claude
+   Desktop — copy the block the installer already wrote, including any
+   `EDCLAUDE_STATE_FILE`):
+
+   ```json
+   {
+     "mcpServers": {
+       "elite-dangerous": {
+         "command": "C:\\Users\\you\\EDMC-MCP\\.venv\\Scripts\\python.exe",
+         "args": ["C:\\Users\\you\\EDMC-MCP\\mcp\\ed_claude_mcp.py"],
+         "env": { "EDCLAUDE_STATE_FILE": "C:\\Users\\you\\.elite-dangerous-claude\\state.json" }
+       }
+     }
+   }
+   ```
+
+3. Start `ollmcp`, pick your model, and ask the same questions as above.
+
+Notes:
+- Tool-calling reliability depends on the **model**, not the client. Small local
+  models call tools far less reliably than Claude — favour a strong tool-capable
+  model and lean on the focused tools (avoid `get_full_snapshot`, which can swamp
+  a small context window).
+- This gives you a terminal UI. For a browser GUI instead, an MCP→OpenAPI proxy
+  such as `mcpo` in front of [Open WebUI](https://openwebui.com/) is an
+  alternative — but `ollmcp` is the least-effort path.
+
 ## Updating
 
 **Code (plugin + server):** the plugin checks GitHub for a newer release on

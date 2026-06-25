@@ -1,29 +1,30 @@
-# Elite Dangerous → Claude Connector
+# Elite Dangerous MCP
 
-Push real-time **ship loadouts** (with engineering modifications) and your
-**engineering materials inventory** from Elite Dangerous into Claude, so you can
-ask things like *"what grade-5 dirty drag drives can I roll right now, and what
-am I short on?"*
+An **MCP server for Elite Dangerous**: it pushes real-time **ship loadouts** (with
+engineering modifications) and your **engineering materials inventory** to any MCP
+client — **Claude Desktop, Ollama, and others** — so you can ask things like
+*"what grade-5 dirty drag drives can I roll right now, and what am I short on?"*
 
 Two pieces, both running locally on the same machine — **no data leaves your PC,
 no network, no API keys**:
 
 ```
  Elite Dangerous ──journal──> EDMarketConnector
-                                     │  (EDClaudeConnector plugin)
+                                     │  (Elite Dangerous MCP plugin)
                                      ▼
                        ~/.elite-dangerous-claude/state.json   ← live snapshot
                                      ▲
                                      │  (reads the file)
-       Claude Desktop / Code ──MCP── ed_claude_mcp.py
+    MCP client (Claude, Ollama) ──MCP── ed_claude_mcp.py
 ```
 
-1. **`plugin/EDClaudeConnector/`** — an EDMarketConnector (EDMC) plugin that
-   writes a JSON snapshot whenever your loadout or materials change.
+1. **`plugin/EDClaudeConnector/`** — an EDMarketConnector (EDMC) plugin (shown as
+   **Elite Dangerous MCP** in EDMC) that writes a JSON snapshot whenever your
+   loadout or materials change.
 2. **`mcp/ed_claude_mcp.py`** — an MCP server that reads that snapshot and gives
-   Claude tools to query it.
+   the connected client tools to query it.
 
-## What Claude can see
+## What the assistant can see
 
 The MCP server exposes these tools:
 
@@ -92,8 +93,8 @@ EDMC bundles its own Python, so the plugin needs **no pip installs**.
    Linux `~/.config/EDMarketConnector/plugins`.)
 2. Copy the **`EDClaudeConnector`** folder (the one containing `load.py`) into
    that plugins folder.
-3. Restart EDMarketConnector. You should see a green **"ED Claude Connector:
-   Running"** line on the main window, and an **ED Claude Connector** tab under
+3. Restart EDMarketConnector. You should see a green **"Elite Dangerous MCP:
+   Running"** line on the main window, and an **Elite Dangerous MCP** tab under
    Settings.
 
 The snapshot is written to `~/.elite-dangerous-claude/state.json` by default
@@ -110,11 +111,11 @@ python -m venv .venv
 # Linux:  .venv/bin/python -m pip install -r mcp/requirements.txt
 ```
 
-Point Claude's `command` at that venv's Python (paths below). Keep
+Point your client's `command` at that venv's Python (paths below). Keep
 `ed_claude_mcp.py` and `materials_ref.json` together — the server loads the
 reference from its own directory.
 
-### 3. Point Claude at the server
+### 3. Point your client at the server
 
 **Claude Desktop** — edit `claude_desktop_config.json` (Windows:
 `%APPDATA%\Claude\claude_desktop_config.json`, Linux:
@@ -153,7 +154,7 @@ block in the Desktop config, or `-e EDCLAUDE_STATE_FILE=...` with `claude mcp ad
 
 ## Try it
 
-With Elite Dangerous **and** EDMarketConnector running, ask Claude:
+With Elite Dangerous **and** EDMarketConnector running, ask your assistant:
 
 - *"What's my current loadout and which modules are engineered?"*
 - *"List my grade-5 manufactured materials."*
@@ -222,7 +223,7 @@ Notes:
 **Code (plugin + server):** the plugin checks GitHub for a newer release on
 startup and, if one exists, appends `(update vX — click to update)` to the
 status line on the EDMC main window. **Click that label** to run the updater
-automatically; then restart EDMC and Claude Desktop when it finishes. You can
+automatically; then restart EDMC and your MCP client when it finishes. You can
 still update by hand by running **`update.bat`** (Windows) or **`./update.sh`**
 (Linux) from your installed folder — both pull the latest (git *or* ZIP
 download) and re-run the installer.
@@ -234,7 +235,7 @@ download) and re-run the installer.
 
 **Reference data (materials & blueprints):** kept in `materials_ref.json` /
 `blueprints_ref.json`, generated from community sources. If the game adds new
-materials or blueprints, just ask Claude to run **`refresh_reference_data`**, or
+materials or blueprints, just ask your assistant to run **`refresh_reference_data`**, or
 run `python mcp/update_references.py` yourself. (The installer also refreshes
 these automatically.)
 
@@ -243,7 +244,7 @@ these automatically.)
 - Materials are always current (the journal `state` tracks running totals).
 - Detailed loadout only updates when the game emits a `Loadout` event (ship
   swap, outfitting changes, login). Visit outfitting once to populate it — or
-  ask Claude to run `request_capi_refresh` to pull the live loadout from Frontier.
+  ask your assistant to run `request_capi_refresh` to pull the live loadout from Frontier.
 - Each ship's loadout is cached the last time you boarded it, so `get_ship_loadout`
   can show any ship even when you're not in it. A ship you've never boarded while
   EDMC was running won't be cached yet — board it once to capture it.

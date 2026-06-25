@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Updates ED Claude Connector to the latest version, then re-runs install.sh
+# Updates Elite Dangerous MCP to the latest version, then re-runs install.sh
 # (idempotent). Works whether you cloned with git or downloaded the tarball.
 set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "Updating ED Claude Connector in $REPO"
+echo "Updating Elite Dangerous MCP in $REPO"
 
 if [[ -d "$REPO/.git" ]]; then
   echo "git checkout detected - pulling latest..."

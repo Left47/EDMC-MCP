@@ -74,7 +74,7 @@ BLUEPRINTS_URL = (
 
 
 def _fetch(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "ED-Claude-Connector"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Elite-Dangerous-MCP"})
     with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (trusted URLs)
         return resp.read()
 

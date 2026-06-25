@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Updates ED Claude Connector to the latest version, then re-runs the
+    Updates Elite Dangerous MCP to the latest version, then re-runs the
     installer (which is idempotent: refreshes the EDMC plugin, the venv
     dependency, the reference data, and the Claude Desktop config).
 
@@ -10,7 +10,7 @@
 param()
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
-Write-Host "Updating ED Claude Connector in $repo" -ForegroundColor Cyan
+Write-Host "Updating Elite Dangerous MCP in $repo" -ForegroundColor Cyan
 
 if (Test-Path (Join-Path $repo '.git')) {
     Write-Host "git checkout detected - pulling latest..."

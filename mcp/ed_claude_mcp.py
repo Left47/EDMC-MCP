@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-ED Claude MCP server.
+Elite Dangerous MCP server.
 
-Reads the local JSON snapshot written by the EDClaudeConnector EDMarketConnector
-plugin and exposes it to Claude as queryable tools — current ship loadout with
-engineering modifications, engineering materials inventory (enriched with grade
-and category), the fleet, and current location/credits.
+Reads the local JSON snapshot written by the Elite Dangerous MCP plugin for
+EDMarketConnector and exposes it to an MCP client (Claude Desktop, Ollama, …) as
+queryable tools — current ship loadout with engineering modifications,
+engineering materials inventory (enriched with grade and category), the fleet,
+and current location/credits.
 
 Run over stdio (the default MCP transport):
 
@@ -75,7 +76,7 @@ def _load_snapshot() -> dict[str, Any]:
     except FileNotFoundError:
         raise RuntimeError(
             f"No snapshot found at {path}. Is EDMarketConnector running with the "
-            f"EDClaudeConnector plugin enabled, and the game launched at least once "
+            f"Elite Dangerous MCP plugin enabled, and the game launched at least once "
             f"since? You can also set EDCLAUDE_STATE_FILE to point at the file."
         )
     except json.JSONDecodeError:
@@ -622,7 +623,7 @@ def request_capi_refresh(wait_seconds: float = 15.0) -> dict[str, Any]:
     if not os.path.exists(path):
         raise RuntimeError(
             f"No snapshot found at {path}. Is EDMarketConnector running with the "
-            f"EDClaudeConnector plugin enabled? You can also set EDCLAUDE_STATE_FILE "
+            f"Elite Dangerous MCP plugin enabled? You can also set EDCLAUDE_STATE_FILE "
             f"to point at the file."
         )
 
@@ -670,7 +671,7 @@ def request_capi_refresh(wait_seconds: float = 15.0) -> dict[str, Any]:
     return {"status": "not_acknowledged", "request_acknowledged": False,
             "note": "The request was written but the EDMC plugin didn't pick it up "
                     "within the wait window. Is EDMarketConnector running with the "
-                    "ED Claude Connector plugin enabled?"}
+                    "Elite Dangerous MCP plugin enabled?"}
 
 
 @mcp.tool()

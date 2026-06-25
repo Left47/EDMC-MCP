@@ -1,9 +1,10 @@
 """
-EDClaudeConnector — EDMarketConnector plugin.
+EliteDangerousMCP — EDMarketConnector plugin.
 
 Captures real-time ship loadout (with engineering modifications) and engineering
 materials inventory from the game journal and writes them to a local JSON
-snapshot file. A companion MCP server reads that file so Claude can answer
+snapshot file. A companion MCP server reads that file so an MCP client (Claude
+Desktop, Ollama, …) can answer
 questions about your loadouts and materials to help plan engineering runs.
 
 All data stays on your machine. Nothing is sent anywhere by this plugin.
@@ -35,7 +36,7 @@ try:
     logger = get_main_logger()
 except Exception:  # pragma: no cover - fallback for very old EDMC
     import logging
-    logger = logging.getLogger("EDClaudeConnector")
+    logger = logging.getLogger("EliteDangerousMCP")
 
 # --- Compatibility shims for pre-5.0.0 EDMC config API -----------------------
 if not hasattr(config, "get_str"):
@@ -45,8 +46,8 @@ if not hasattr(config, "get_bool"):
 if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
-PLUGIN_NAME = "ED Claude Connector"
-VERSION = "0.6.3"
+PLUGIN_NAME = "Elite Dangerous MCP"
+VERSION = "0.7.0"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -70,11 +71,11 @@ def _check_for_update() -> None:
         latest = resp.json().get("tag_name", "").lstrip("v")
         if latest and _version_tuple(latest) > _version_tuple(VERSION):
             _update_available = latest
-            logger.info(f"EDClaudeConnector: update available: v{latest} (have v{VERSION})")
+            logger.info(f"EliteDangerousMCP: update available: v{latest} (have v{VERSION})")
             # NB: do not touch tkinter here — this runs on a worker thread.
             # plugin_app schedules a label refresh on the main loop instead.
     except Exception as exc:  # never disrupt the app over an update check
-        logger.debug(f"EDClaudeConnector update check skipped: {exc}")
+        logger.debug(f"EliteDangerousMCP update check skipped: {exc}")
 
 
 def _version_tuple(v: str) -> tuple:
@@ -272,7 +273,7 @@ class _Connector:
         # Restore the per-ship loadout cache from the previous session's snapshot
         # so stored ships' engineering survives an EDMC restart.
         self._load_cached_loadouts()
-        self._thread = threading.Thread(target=self._writer_loop, name="EDClaudeWriter", daemon=True)
+        self._thread = threading.Thread(target=self._writer_loop, name="EliteDangerousMCPWriter", daemon=True)
         self._thread.start()
 
     def _load_cached_loadouts(self) -> None:
@@ -328,7 +329,7 @@ class _Connector:
                 fh.write(data)
             os.replace(tmp, path)  # atomic on the same filesystem
         except OSError as exc:
-            logger.error(f"EDClaudeConnector: failed to write {path}: {exc}")
+            logger.error(f"EliteDangerousMCP: failed to write {path}: {exc}")
 
     # -- snapshot building ----------------------------------------------------
     def update(self, cmdr: str, system: Optional[str], station: Optional[str],
@@ -409,7 +410,7 @@ class _Connector:
             snap["ships"] = ships
 
             # Per-ship loadout cache: the last-known full loadout (modules +
-            # engineering) of every ship we've boarded, so Claude can inspect any
+            # engineering) of every ship we've boarded, so the client can inspect any
             # ship in the fleet, not just the current one. Survives restarts via
             # _load_cached_loadouts().
             snap["ship_loadouts"] = {str(sid): lo for sid, lo in self.loadouts.items()}
@@ -459,7 +460,7 @@ class _Connector:
                 })
                 self.snapshot["capi"] = capi
             self.mark_dirty()
-            logger.info(f"EDClaudeConnector: CAPI refresh requested but on cooldown "
+            logger.info(f"EliteDangerousMCP: CAPI refresh requested but on cooldown "
                         f"({remaining:.0f}s remaining)")
             return
 
@@ -488,7 +489,7 @@ class _Connector:
                 "responded_at": _utcnow_iso(),
                 "request_nonce": prev.get("request_nonce"),
                 "requested_at": prev.get("requested_at"),
-                # None when this CAPI update wasn't triggered by a Claude request
+                # None when this CAPI update wasn't triggered by a client request
                 # (e.g. EDMC's automatic pull on docking) — still worth capturing.
                 "response_nonce": self._pending_nonce,
                 "is_beta": bool(is_beta),
@@ -559,7 +560,7 @@ def _launch_updater() -> bool:
         subprocess.Popen(["bash", updater], cwd=_repo_path)  # headless fallback
         return True
     except Exception as exc:  # pragma: no cover - platform/launch quirks
-        logger.error(f"EDClaudeConnector: failed to launch updater: {exc}")
+        logger.error(f"EliteDangerousMCP: failed to launch updater: {exc}")
         return False
 
 
@@ -569,14 +570,14 @@ def plugin_start3(plugin_dir: str) -> str:
     global _repo_path
     _repo_path = _read_repo_path(plugin_dir)
     CONNECTOR.start()
-    logger.info(f"EDClaudeConnector v{VERSION} started; snapshot path: {CONNECTOR.path}")
-    threading.Thread(target=_check_for_update, name="EDClaudeUpdateCheck", daemon=True).start()
+    logger.info(f"EliteDangerousMCP v{VERSION} started; snapshot path: {CONNECTOR.path}")
+    threading.Thread(target=_check_for_update, name="EliteDangerousMCPUpdateCheck", daemon=True).start()
     return PLUGIN_NAME
 
 
 def plugin_stop() -> None:
     CONNECTOR.stop()
-    logger.info("EDClaudeConnector stopped")
+    logger.info("EliteDangerousMCP stopped")
 
 
 def _refresh_status_label() -> None:
@@ -588,9 +589,9 @@ def _refresh_status_label() -> None:
     if _status_label is None:
         return
     if CONNECTOR.enabled:
-        _status_label["text"] = "ED Claude Connector: Running"
+        _status_label["text"] = "Elite Dangerous MCP: Running"
     else:
-        _status_label["text"] = "ED Claude Connector: Off (enable in Settings)"
+        _status_label["text"] = "Elite Dangerous MCP: Off (enable in Settings)"
     if _update_available:
         # Clickable when we know where the update script lives (recorded by the
         # installer); otherwise just announce it.
@@ -608,12 +609,12 @@ def _on_status_click(event: object = None) -> None:
         return
     if _launch_updater():
         _status_label["text"] = (
-            f"ED Claude Connector: Updating to v{_update_available}… "
-            f"restart EDMC & Claude Desktop when it finishes")
+            f"Elite Dangerous MCP: Updating to v{_update_available}… "
+            f"restart EDMC & your MCP client when it finishes")
         _status_label["cursor"] = ""
     else:
         _status_label["text"] = (
-            f"ED Claude Connector: Update v{_update_available} ready — "
+            f"Elite Dangerous MCP: Update v{_update_available} ready — "
             f"run update.bat in your EDMC-MCP folder")
 
 
@@ -625,9 +626,9 @@ def _fire_capi_update() -> None:
         return
     try:
         _status_label.event_generate("<<Invoke>>", when="tail")
-        logger.info("EDClaudeConnector: requested a live CAPI update (<<Invoke>>)")
+        logger.info("EliteDangerousMCP: requested a live CAPI update (<<Invoke>>)")
     except tk.TclError as exc:
-        logger.error(f"EDClaudeConnector: could not fire CAPI update: {exc}")
+        logger.error(f"EliteDangerousMCP: could not fire CAPI update: {exc}")
 
 
 def _poll_capi_request() -> None:
@@ -635,7 +636,7 @@ def _poll_capi_request() -> None:
     try:
         CONNECTOR.poll_request()
     except Exception as exc:  # never let the timer die
-        logger.error(f"EDClaudeConnector CAPI poll error: {exc}", exc_info=True)
+        logger.error(f"EliteDangerousMCP CAPI poll error: {exc}", exc_info=True)
     finally:
         if _status_label is not None:
             _status_label.after(CAPI_POLL_MS, _poll_capi_request)
@@ -653,7 +654,7 @@ def _theme_label(widget: tk.Label) -> None:
         if hasattr(theme, "update"):
             theme.update(widget)
     except Exception as exc:  # pragma: no cover - never break the UI over theming
-        logger.debug(f"EDClaudeConnector: theme registration skipped: {exc}")
+        logger.debug(f"EliteDangerousMCP: theme registration skipped: {exc}")
 
 
 def plugin_app(parent: tk.Frame) -> tk.Label:
@@ -664,7 +665,7 @@ def plugin_app(parent: tk.Frame) -> tk.Label:
     _refresh_status_label()
     # Pick up the background update-check result on the main thread (tkinter-safe).
     _status_label.after(12000, _refresh_status_label)
-    # Start the timer that lets Claude (via the MCP server) request CAPI refreshes.
+    # Start the timer that lets the client (via the MCP server) request CAPI refreshes.
     _status_label.after(CAPI_POLL_MS, _poll_capi_request)
     return _status_label
 
@@ -676,14 +677,14 @@ def plugin_prefs(parent: nb.Notebook, cmdr: str, is_beta: bool) -> tk.Frame:
 
     frame = nb.Frame(parent)
     frame.columnconfigure(1, weight=1)
-    version_text = f"ED Claude Connector — v{VERSION}"
+    version_text = f"Elite Dangerous MCP — v{VERSION}"
     if _update_available:
         version_text += f"  (update v{_update_available} available)"
     nb.Label(frame, text=version_text).grid(
         row=0, column=0, columnspan=3, sticky=tk.W, padx=8, pady=(8, 0))
     nb.Label(frame, text="Writes ship loadouts & engineering materials to a local").grid(
         row=1, column=0, columnspan=3, sticky=tk.W, padx=8, pady=(8, 0))
-    nb.Label(frame, text="JSON file for the ED Claude MCP server to read.").grid(
+    nb.Label(frame, text="JSON file for the Elite Dangerous MCP server to read.").grid(
         row=2, column=0, columnspan=3, sticky=tk.W, padx=8)
     nb.Checkbutton(frame, text="Enabled", variable=_enabled_var).grid(
         row=3, column=0, sticky=tk.W, padx=8, pady=8)
@@ -710,7 +711,7 @@ def journal_entry(cmdr: str, is_beta: bool, system: Optional[str], station: Opti
     try:
         CONNECTOR.update(cmdr, system, station, entry, state)
     except Exception as exc:  # never let a plugin error disrupt EDMC
-        logger.error(f"EDClaudeConnector journal_entry error: {exc}", exc_info=True)
+        logger.error(f"EliteDangerousMCP journal_entry error: {exc}", exc_info=True)
     return None
 
 
@@ -720,7 +721,7 @@ def cmdr_data(data: dict[str, Any], is_beta: bool) -> None:
     try:
         CONNECTOR.record_capi(data, is_beta)
     except Exception as exc:  # never let a plugin error disrupt EDMC
-        logger.error(f"EDClaudeConnector cmdr_data error: {exc}", exc_info=True)
+        logger.error(f"EliteDangerousMCP cmdr_data error: {exc}", exc_info=True)
 
 
 def cmdr_data_legacy(data: dict[str, Any], is_beta: bool) -> None:

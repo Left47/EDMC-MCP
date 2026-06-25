@@ -18,7 +18,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo = $PSScriptRoot
-Write-Host "ED Claude Connector installer" -ForegroundColor Cyan
+Write-Host "Elite Dangerous MCP installer" -ForegroundColor Cyan
 Write-Host "Repo: $repo`n"
 
 # Refuse to run from a temporary/zip-preview location. Windows lets you "open"
@@ -164,6 +164,6 @@ $written | ForEach-Object { Write-Host "        $_" }
 
 Write-Host "`nDone." -ForegroundColor Cyan
 Write-Host "Next:"
-Write-Host "  1. Restart EDMarketConnector (look for 'ED Claude Connector: Running' on the main window)."
+Write-Host "  1. Restart EDMarketConnector (look for 'Elite Dangerous MCP: Running' on the main window)."
 Write-Host "  2. Restart Claude Desktop."
 Write-Host "  3. Launch Elite Dangerous, then ask Claude about your loadout or materials."

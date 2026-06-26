@@ -376,6 +376,83 @@ check("capi un-engineered module -> engineering None",
 check("capi fleet captured", len(capi.get("fleet") or []) == 1, str(len(capi.get("fleet") or [])))
 check("capi surfaced in get_status", (srv.get_status().get("capi") or {}).get("status") == "received")
 
+# --- Golden fixture: a real CAPI /profile dump (CMDR LEFT47, Loial / Krait_Light) ---
+# Exercises low grades (G1/G2/G3), a freshly-rolled-to-a-lower-grade module
+# (LargeHardpoint1 G2 vs the otherwise-identical LargeHardpoint2 G3), the
+# engineer-disagreement pair (both Weapon_LightWeight, Mel Brandon vs The
+# Dweller), resistance-skew (Slot02 shield), the null-quality estimator case
+# (Slot09 Sensor_Expanded), and several specialModifications: [] modules.
+with open(os.path.join(ROOT, "tests", "fixtures", "loial_capi_ship.json")) as fh:
+    loial_ship = json.load(fh)
+loial = load._capi_current_ship(loial_ship)  # no journal -> engineer == CAPI value
+gm = {m["slot"]: m for m in loial["modules"]}
+
+check("golden: ship type", loial["type"] == "Krait_Light", str(loial["type"]))
+check("golden: engineered_module_count == 9", loial["engineered_module_count"] == 9,
+      str(loial["engineered_module_count"]))
+
+# FSD spot-check (the brief's parity anchor): Long Range G5, Mass Manager, q≈0.4.
+g_fsd = gm["FrameShiftDrive"]
+check("golden: FSD item lower-cased",
+      g_fsd["item"] == "int_hyperdrive_overcharge_size5_class5", g_fsd["item"])
+check("golden: FSD engineering", g_fsd["engineering"] == {
+    "blueprint": "FSD_LongRange", "grade": 5, "quality": 0.4, "quality_estimated": True,
+    "engineer": "Felicity Farseer", "engineer_last_roll": "Felicity Farseer",
+    "experimental_effect": "Mass Manager",
+    "modifiers": g_fsd["engineering"]["modifiers"]},  # modifiers checked separately
+    str(g_fsd["engineering"]))
+check("golden: FSD modifier multiplier form",
+      {"label": "FSDOptimalMass", "multiplier": 1.49, "less_is_good": 0, "display": "49.00%"}
+      in g_fsd["engineering"]["modifiers"], str(g_fsd["engineering"]["modifiers"]))
+
+# Same blueprint, different engineer + grade (LargeHardpoint1 was re-rolled to G2).
+check("golden: pulse LH2 grade/engineer",
+      (gm["LargeHardpoint2"]["engineering"]["grade"], gm["LargeHardpoint2"]["engineering"]["engineer"])
+      == (3, "The Dweller"), str(gm["LargeHardpoint2"]["engineering"]))
+check("golden: pulse LH1 grade/engineer (fresher, lower grade)",
+      (gm["LargeHardpoint1"]["engineering"]["grade"], gm["LargeHardpoint1"]["engineering"]["engineer"])
+      == (2, "Mel Brandon"), str(gm["LargeHardpoint1"]["engineering"]))
+check("golden: pulse experimental Stripped Down",
+      gm["LargeHardpoint1"]["engineering"]["experimental_effect"] == "Stripped Down",
+      str(gm["LargeHardpoint1"]["engineering"]["experimental_effect"]))
+
+# Resistance-skew guard on real data: shield quality from ShieldGenStrength only.
+check("golden: shield quality ignores resistances",
+      gm["Slot02_Size5"]["engineering"]["quality"] == 1.0,
+      str(gm["Slot02_Size5"]["engineering"]["quality"]))
+check("golden: shield experimental Fast Charge",
+      gm["Slot02_Size5"]["engineering"]["experimental_effect"] == "Fast Charge",
+      str(gm["Slot02_Size5"]["engineering"]["experimental_effect"]))
+
+# Estimator fall-throughs and low grades.
+check("golden: DSS (Sensor_Expanded) quality null + not estimated",
+      gm["Slot09_Size1"]["engineering"]["quality"] is None
+      and gm["Slot09_Size1"]["engineering"]["quality_estimated"] is False,
+      str(gm["Slot09_Size1"]["engineering"]))
+check("golden: G1 power plant quality", gm["PowerPlant"]["engineering"]["quality"] == 1.0,
+      str(gm["PowerPlant"]["engineering"]["quality"]))
+check("golden: Radar partial quality", gm["Radar"]["engineering"]["quality"] == 0.333,
+      str(gm["Radar"]["engineering"]["quality"]))
+check("golden: experimental codenames resolved + null",
+      gm["MainEngines"]["engineering"]["experimental_effect"] == "Drag Drives"
+      and gm["PowerDistributor"]["engineering"]["experimental_effect"] == "Super Conduits"
+      and gm["PowerPlant"]["engineering"]["experimental_effect"] is None,
+      f'{gm["MainEngines"]["engineering"]["experimental_effect"]} / '
+      f'{gm["PowerDistributor"]["engineering"]["experimental_effect"]}')
+check("golden: un-engineered module -> engineering None",
+      gm["Armour"]["engineering"] is None, str(gm["Armour"]["engineering"]))
+
+# Engineer provenance merge against the real fixture: a journal Loadout naming a
+# different originating engineer for the same fitted mod (item + blueprint match)
+# wins for `engineer`; CAPI keeps `engineer_last_roll`.
+loial_merged = load._capi_current_ship(loial_ship, {"Modules": [
+    {"Slot": "LargeHardpoint1", "Item": "hpt_pulselaser_gimbal_large",
+     "Engineering": {"BlueprintName": "Weapon_LightWeight", "Engineer": "Liz Ryder"}}]})
+m_lh1 = {m["slot"]: m for m in loial_merged["modules"]}["LargeHardpoint1"]["engineering"]
+check("golden+merge: engineer from journal, last_roll from CAPI",
+      m_lh1["engineer"] == "Liz Ryder" and m_lh1["engineer_last_roll"] == "Mel Brandon",
+      f'{m_lh1["engineer"]} / {m_lh1["engineer_last_roll"]}')
+
 # Cooldown path: simulate EDMC having just queried (querytime ~ now) so the
 # plugin reports cooldown instead of firing, and the MCP recommends a retry.
 _cfg_store["querytime"] = int(time.time())  # last CAPI query was just now

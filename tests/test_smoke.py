@@ -525,6 +525,70 @@ check("lan: hull-reinforcement addition-only -> quality null + Layered Plating",
       and ln["Slot02_Size4"]["experimental_effect"] == "Layered Plating",
       f'{ln["Slot02_Size4"]["quality"]}/{ln["Slot02_Size4"]["experimental_effect"]}')
 
+# --- Real CAPI + journal PAIRS --------------------------------------------------
+# Validate the CAPI path against the journal for the SAME ship: engineer-provenance
+# merge, experimental names vs the game's own ExperimentalEffect_Localised, and the
+# quality estimate vs the game's authoritative Quality field. (Captures aren't
+# simultaneous; re-rolled slots legitimately differ and are filtered out.)
+for pairname in ("loial", "lan"):
+    cship = json.load(open(os.path.join(ROOT, "tests", "fixtures", f"{pairname}_capi_ship.json")))
+    journal = json.load(open(os.path.join(ROOT, "tests", "fixtures", f"{pairname}_journal_loadout.json")))
+    merged = load._capi_current_ship(cship, journal)
+    ceng = {m["slot"]: m["engineering"] for m in merged["modules"] if m["engineering"]}
+    jraw = {m["Slot"]: m for m in journal["Modules"] if isinstance(m, dict) and m.get("Engineering")}
+    jsum = {s: srv._engineering_summary(m) for s, m in jraw.items()}
+
+    merge_bad, exp_bad, q_n, q_bad = [], [], 0, []
+    for slot, ce in ceng.items():
+        js = jsum.get(slot)
+        if not js:
+            continue
+        capi_last = cship["modules"][slot]["engineer"]["engineerName"]
+        # Same fitted mod (item already equal by slot; blueprint must match too) ->
+        # engineer is the journal's originating one, engineer_last_roll is CAPI's.
+        if ce["blueprint"] == js["blueprint"]:
+            if ce["engineer"] != js["engineer"]:
+                merge_bad.append(f'{slot}:{ce["engineer"]}!={js["engineer"]}')
+            if ce["engineer_last_roll"] != capi_last:
+                merge_bad.append(f"{slot}:lastroll")
+        # Experimental display name vs the game's localised string (same effect only).
+        spec = cship["modules"][slot].get("specialModifications")
+        capi_code = next(iter(spec), None) if isinstance(spec, dict) and spec else None
+        if capi_code and capi_code == jraw[slot]["Engineering"].get("ExperimentalEffect"):
+            if ce["experimental_effect"] != js["experimental_effect"]:
+                exp_bad.append(f'{slot}:{ce["experimental_effect"]}!={js["experimental_effect"]}')
+        # Quality vs the game's Quality, only where it's the same roll (same engineer
+        # AND grade) and we produced an estimate.
+        if (capi_last == js["engineer"] and ce["grade"] == js["grade"]
+                and ce["quality"] is not None and js["quality"] is not None):
+            q_n += 1
+            if abs(ce["quality"] - js["quality"]) > 0.02:
+                q_bad.append(f'{slot}:{ce["quality"]}!={js["quality"]}')
+
+    check(f"pair {pairname}: engineer provenance merge", not merge_bad, "; ".join(merge_bad[:6]))
+    check(f"pair {pairname}: experimental names == game localised", not exp_bad, "; ".join(exp_bad[:6]))
+    if pairname == "loial":
+        # Loial's two captures are close: every same-roll module's estimate should
+        # match the game's Quality. (Lan was heavily re-rolled between captures, so
+        # a same-engineer/grade slot can still differ — not a clean cross-check.)
+        check("pair loial: quality estimate == game Quality (same-roll)",
+              q_n >= 5 and not q_bad, f"{q_n} compared; bad={q_bad[:6]}")
+
+# Explicit drift spot-checks (the cases from the original report).
+loial_merged = {m["slot"]: m["engineering"] for m in load._capi_current_ship(
+    json.load(open(os.path.join(ROOT, "tests", "fixtures", "loial_capi_ship.json"))),
+    json.load(open(os.path.join(ROOT, "tests", "fixtures", "loial_journal_loadout.json")))
+)["modules"] if m["engineering"]}
+check("drift: Loial LargeHardpoint1 engineer The Dweller / last_roll Mel Brandon",
+      loial_merged["LargeHardpoint1"]["engineer"] == "The Dweller"
+      and loial_merged["LargeHardpoint1"]["engineer_last_roll"] == "Mel Brandon"
+      and loial_merged["LargeHardpoint1"]["grade"] == 2,  # CAPI grade kept (fresher)
+      str(loial_merged["LargeHardpoint1"]))
+check("drift: Loial Slot02 shield engineer Elvira Martuuk / last_roll Mel Brandon",
+      loial_merged["Slot02_Size5"]["engineer"] == "Elvira Martuuk"
+      and loial_merged["Slot02_Size5"]["engineer_last_roll"] == "Mel Brandon",
+      str(loial_merged["Slot02_Size5"]))
+
 # Cooldown path: simulate EDMC having just queried (querytime ~ now) so the
 # plugin reports cooldown instead of firing, and the MCP recommends a retry.
 _cfg_store["querytime"] = int(time.time())  # last CAPI query was just now

@@ -1,0 +1,15 @@
+{
+  "_note": "Trimmed real journal Loadout (engineered modules only; Modifiers dropped since Quality is an explicit field). Pairs with loial_capi_ship.json.",
+  "event": "Loadout", "Ship": "krait_light", "ShipID": 2, "ShipName": "UCC Loial Arent'son", "ShipIdent": "WOT003",
+  "Modules": [
+    {"Slot": "LargeHardpoint1", "Item": "hpt_pulselaser_gimbal_large", "Engineering": {"Engineer": "The Dweller", "BlueprintName": "Weapon_LightWeight", "Level": 1, "Quality": 1.0, "ExperimentalEffect": "special_weapon_lightweight", "ExperimentalEffect_Localised": "Stripped Down"}},
+    {"Slot": "LargeHardpoint2", "Item": "hpt_pulselaser_gimbal_large", "Engineering": {"Engineer": "The Dweller", "BlueprintName": "Weapon_LightWeight", "Level": 3, "Quality": 0.666, "ExperimentalEffect": "special_weapon_lightweight", "ExperimentalEffect_Localised": "Stripped Down"}},
+    {"Slot": "PowerPlant", "Item": "int_powerplant_size7_class5", "Engineering": {"Engineer": "Felicity Farseer", "BlueprintName": "PowerPlant_Boosted", "Level": 1, "Quality": 1.0}},
+    {"Slot": "MainEngines", "Item": "int_engine_size6_class5", "Engineering": {"Engineer": "Felicity Farseer", "BlueprintName": "Engine_Dirty", "Level": 3, "Quality": 1.0, "ExperimentalEffect": "special_engine_overloaded", "ExperimentalEffect_Localised": "Drag Drives"}},
+    {"Slot": "FrameShiftDrive", "Item": "int_hyperdrive_overcharge_size5_class5", "Engineering": {"Engineer": "Felicity Farseer", "BlueprintName": "FSD_LongRange", "Level": 5, "Quality": 0.4, "ExperimentalEffect": "special_fsd_heavy", "ExperimentalEffect_Localised": "Mass Manager"}},
+    {"Slot": "PowerDistributor", "Item": "int_powerdistributor_size7_class5", "Engineering": {"Engineer": "The Dweller", "BlueprintName": "PowerDistributor_HighFrequency", "Level": 4, "Quality": 1.0, "ExperimentalEffect": "special_powerdistributor_fast", "ExperimentalEffect_Localised": "Super Conduits"}},
+    {"Slot": "Radar", "Item": "int_sensors_size6_class2", "Engineering": {"Engineer": "Felicity Farseer", "BlueprintName": "Sensor_LightWeight", "Level": 3, "Quality": 0.3333}},
+    {"Slot": "Slot02_Size5", "Item": "int_shieldgenerator_size5_class3_fast", "Engineering": {"Engineer": "Elvira Martuuk", "BlueprintName": "ShieldGenerator_Reinforced", "Level": 3, "Quality": 0.4}},
+    {"Slot": "Slot09_Size1", "Item": "int_detailedsurfacescanner_tiny", "Engineering": {"Engineer": "Felicity Farseer", "BlueprintName": "Sensor_Expanded", "Level": 3, "Quality": 1.0}}
+  ]
+}

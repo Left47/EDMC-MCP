@@ -453,6 +453,78 @@ check("golden+merge: engineer from journal, last_roll from CAPI",
       m_lh1["engineer"] == "Liz Ryder" and m_lh1["engineer_last_roll"] == "Mel Brandon",
       f'{m_lh1["engineer"]} / {m_lh1["engineer_last_roll"]}')
 
+# --- Generic invariants across every real CAPI fixture ----------------------
+# Each fixture is a real Save-Raw-Data ship. For every slot we assert the parse
+# is internally consistent with the raw CAPI (so the parser, not the transcription,
+# is what's under test): engineered iff a raw `engineer` block exists, blueprint/
+# grade/engineer copied through, experimental codenames resolved (no `special_`
+# leak), quality null-or-0..1 with an honest estimated flag, and item lower-cased.
+def _capi_fixture(name):
+    with open(os.path.join(ROOT, "tests", "fixtures", f"{name}_capi_ship.json")) as fh:
+        return load._capi_current_ship(json.load(fh)), json.load(open(
+            os.path.join(ROOT, "tests", "fixtures", f"{name}_capi_ship.json")))
+
+EXPECTED_ENGINEERED = {"loial": 9, "aviendha": 17, "lan": 13}
+for fixname, expected in EXPECTED_ENGINEERED.items():
+    parsed, raw = _capi_fixture(fixname)
+    pm = {m["slot"]: m for m in parsed["modules"]}
+    issues, raw_eng = [], 0
+    for slot, entry in raw["modules"].items():
+        out, e = pm.get(slot, {}), pm.get(slot, {}).get("engineering")
+        if out.get("item") != entry["module"]["name"].lower():
+            issues.append(f"{slot}:item")
+        eng_raw = entry.get("engineer")
+        if isinstance(eng_raw, dict):
+            raw_eng += 1
+            if not e:
+                issues.append(f"{slot}:null"); continue
+            if e["blueprint"] != eng_raw.get("recipeName"): issues.append(f"{slot}:bp")
+            if e["grade"] != eng_raw.get("recipeLevel"): issues.append(f"{slot}:grade")
+            if e["engineer"] != eng_raw.get("engineerName"): issues.append(f"{slot}:eng")
+            if e["engineer_last_roll"] != eng_raw.get("engineerName"): issues.append(f"{slot}:lastroll")
+            if e["quality_estimated"] is not (e["quality"] is not None): issues.append(f"{slot}:flag")
+            if e["quality"] is not None and not 0.0 <= e["quality"] <= 1.0: issues.append(f"{slot}:q={e['quality']}")
+            if any(set(x) != {"label", "multiplier", "less_is_good", "display"} for x in e["modifiers"]):
+                issues.append(f"{slot}:modkeys")
+            spec = entry.get("specialModifications")
+            resolved = e["experimental_effect"]
+            if isinstance(spec, dict) and spec:
+                if not resolved or resolved.startswith("special_"): issues.append(f"{slot}:exp={resolved}")
+            elif resolved is not None:
+                issues.append(f"{slot}:exp!None")
+        elif e is not None:
+            issues.append(f"{slot}:notNone")
+    check(f"fixture {fixname}: {expected} engineered",
+          parsed["engineered_module_count"] == expected and raw_eng == expected,
+          f'{parsed["engineered_module_count"]} (raw {raw_eng})')
+    check(f"fixture {fixname}: per-module invariants", not issues, "; ".join(issues[:8]))
+
+# Targeted spot-checks for behaviours these two ships add over Loial.
+av = {m["slot"]: m["engineering"] for m in _capi_fixture("aviendha")[0]["modules"] if m["engineering"]}
+check("aviendha: armour hull-boost quality, resistances skipped", av["Armour"]["quality"] == 0.75,
+      str(av["Armour"]["quality"]))
+check("aviendha: overcharged G5 partial quality (0.6)", av["MediumHardpoint1"]["quality"] == 0.6,
+      str(av["MediumHardpoint1"]["quality"]))
+check("aviendha: Weapon_Efficient -> Phasing Sequence",
+      av["LargeHardpoint1"]["experimental_effect"] == "Phasing Sequence",
+      av["LargeHardpoint1"]["experimental_effect"])
+
+ln = {m["slot"]: m["engineering"] for m in _capi_fixture("lan")[0]["modules"] if m["engineering"]}
+check("lan: special_thermalshock -> Thermal Shock (casing)",
+      ln["LargeHardpoint2"]["experimental_effect"] == "Thermal Shock",
+      ln["LargeHardpoint2"]["experimental_effect"])
+check("lan: special_powerplant_highcharge -> Monstered",
+      ln["PowerPlant"]["experimental_effect"] == "Monstered", ln["PowerPlant"]["experimental_effect"])
+check("lan: special_armour_chunky -> Deep Plating",
+      ln["Armour"]["experimental_effect"] == "Deep Plating", ln["Armour"]["experimental_effect"])
+check("lan: anomalous armour multiplier -> quality null (not clamped)",
+      ln["Armour"]["quality"] is None and ln["Armour"]["quality_estimated"] is False,
+      f'{ln["Armour"]["quality"]}/{ln["Armour"]["quality_estimated"]}')
+check("lan: hull-reinforcement addition-only -> quality null + Layered Plating",
+      ln["Slot02_Size4"]["quality"] is None
+      and ln["Slot02_Size4"]["experimental_effect"] == "Layered Plating",
+      f'{ln["Slot02_Size4"]["quality"]}/{ln["Slot02_Size4"]["experimental_effect"]}')
+
 # Cooldown path: simulate EDMC having just queried (querytime ~ now) so the
 # plugin reports cooldown instead of firing, and the MCP recommends a retry.
 _cfg_store["querytime"] = int(time.time())  # last CAPI query was just now

@@ -261,6 +261,17 @@ SAMPLE_CAPI = {
                     "OutfittingFieldType_DSS_PatchRadius": {
                         "value": 1.2, "LessIsGood": False, "displayValue": "20.00%"}},
                 "specialModifications": []},
+            # Known blueprint whose only varying stat is a resistance -> all stats
+            # skipped -> quality null AND quality_estimated false (not contradictory).
+            "Armour": {
+                "module": {"name": "Federation_Corvette_Armour_Grade2", "on": True,
+                           "priority": 1, "health": 1000000, "value": 3000000},
+                "engineer": {"engineerName": "Selene Jean", "engineerId": 300210,
+                             "recipeName": "Armour_Kinetic", "recipeLevel": 5},
+                "WorkInProgress_modifications": {
+                    "OutfittingFieldType_KineticResistance": {
+                        "value": 1.4, "LessIsGood": False, "displayValue": "40.00%"}},
+                "specialModifications": []},
             "MainEngines": {"module": {
                 "name": "Int_Engine_Size7_Class5", "on": True, "priority": 0,
                 "health": 1000000}},  # not engineered: no 'engineer' block
@@ -290,7 +301,7 @@ capi_ship = capi.get("current_ship") or {}
 check("capi current ship captured", capi_ship.get("type") == "federation_corvette",
       str(capi_ship.get("type")))
 check("capi engineering captured",
-      capi_ship.get("engineered_module_count") == 4,
+      capi_ship.get("engineered_module_count") == 5,
       str(capi_ship.get("engineered_module_count")))
 capi_mods = {m["slot"]: m for m in capi_ship.get("modules", [])}
 # CAPI engineering is normalised to the same summary shape as the journal path.
@@ -323,6 +334,23 @@ check("capi unknown-blueprint quality is null", dss_eng.get("quality") is None,
       str(dss_eng.get("quality")))
 check("capi null quality not flagged estimated", dss_eng.get("quality_estimated") is False,
       str(dss_eng.get("quality_estimated")))
+# Known blueprint, but its only varying stat is a resistance (skipped) -> same
+# null + not-estimated result (no contradictory flag).
+arm_eng = (capi_mods.get("Armour", {}).get("engineering")) or {}
+check("capi resistance-only blueprint quality null + not estimated",
+      arm_eng.get("quality") is None and arm_eng.get("quality_estimated") is False,
+      f'{arm_eng.get("quality")}/{arm_eng.get("quality_estimated")}')
+# Experimental display names normalised to the journal's Title Case.
+check("capi experimental casing normalised (sentence -> title)",
+      load._capi_special_effect({"special_phasing_sequence": "special_phasing_sequence"})
+      == "Phasing Sequence",
+      load._capi_special_effect({"special_phasing_sequence": "special_phasing_sequence"}))
+check("capi experimental preserves acronyms",
+      load._capi_special_effect({"special_fsd_interrupt": "special_fsd_interrupt"})
+      == "FSD Interrupt",
+      load._capi_special_effect({"special_fsd_interrupt": "special_fsd_interrupt"}))
+check("capi experimental empty list -> None",
+      load._capi_special_effect([]) is None, str(load._capi_special_effect([])))
 check("capi FSD experimental friendly name", fsd_eng.get("experimental_effect") == "Mass Manager",
       str(fsd_eng.get("experimental_effect")))
 check("capi quality estimated from roll (FSD G5 maxed)", fsd_eng.get("quality") == 1.0,

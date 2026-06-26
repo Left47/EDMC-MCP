@@ -47,7 +47,7 @@ if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "Elite Dangerous MCP"
-VERSION = "0.8.1"
+VERSION = "0.8.2"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -358,13 +358,24 @@ _BP_QUALITY_RANGES = {
 }
 
 
+def _title_effect(name: str) -> str:
+    """Capitalise the first letter of each space-separated word, leaving the rest
+    untouched, to match the journal's Title Case. coriolis is sometimes sentence
+    case (e.g. 'Phasing sequence' -> 'Phasing Sequence'); doing it this way (not
+    str.title()) preserves acronyms ('FSD interrupt' -> 'FSD Interrupt') and forms
+    like 'Hi-Cap'."""
+    return " ".join((w[:1].upper() + w[1:]) if w else w for w in name.split(" "))
+
+
 def _capi_special_effect(special: Any) -> Optional[str]:
     """CAPI 'specialModifications' is {codename: codename} when an experimental
     effect is applied, or an empty list/None when not. Return the friendly name
-    the journal uses, falling back to the raw codename if it's unrecognised."""
+    the journal uses (Title Case), falling back to the raw codename if it's
+    unrecognised."""
     if isinstance(special, dict) and special:
         codename = next(iter(special))
-        return _SPECIAL_EFFECTS.get(codename, codename)
+        name = _SPECIAL_EFFECTS.get(codename)
+        return _title_effect(name) if name else codename
     return None
 
 

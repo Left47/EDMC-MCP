@@ -605,6 +605,22 @@ def request_capi_refresh(wait_seconds: float = 15.0) -> dict[str, Any]:
     re-rolls engineering, swaps modules, or buys/sells a ship — rather than
     relying on whatever the journal happened to emit.
 
+    CAPI engineering vs the journal (get_current_loadout) — by design:
+      - CAPI is the fresher source for roll-volatile fields (grade, quality,
+        modifiers); after a remote-workshop re-roll the journal can lag.
+      - `engineer` is the originating engineer (merged from the journal when the
+        same mod is still fitted); `engineer_last_roll` is who CAPI says rolled
+        it last — these differ after a re-roll at a different engineer.
+      - `quality` is ESTIMATED (CAPI omits it), derived from how far the roll sits
+        into the blueprint grade's range; `quality_estimated` is True only for the
+        quality field and only when a value was actually derived (else quality is
+        null and the flag is False).
+      - `modifiers` carry CAPI's per-stat `multiplier` + `display` string (e.g.
+        1.49 / "49.00%"); the journal path instead gives absolute `value`/
+        `original`. Both shapes are intentional — CAPI doesn't provide absolutes.
+      - CAPI omits the cockpit and cargo hatch, so its module_count is lower than
+        the journal's; don't compare raw counts (engineered_module_count matches).
+
     Frontier enforces a global 60s cooldown (shared with EDMC's own pulls, e.g.
     on docking). If it's still active the refresh is skipped and this returns
     status 'cooldown' with 'retry_after_seconds' telling you when to try again.

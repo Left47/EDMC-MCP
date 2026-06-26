@@ -47,7 +47,7 @@ if not hasattr(config, "get_int"):
     config.get_int = lambda key, default=0: config.getint(key)  # type: ignore
 
 PLUGIN_NAME = "Elite Dangerous MCP"
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 GITHUB_REPO = "Left47/EDMC-MCP"
 CONFIG_PATH_KEY = "edclaude_state_path"
 CONFIG_ENABLED_KEY = "edclaude_enabled"
@@ -389,15 +389,23 @@ def _capi_modifiers(wip: Any) -> list[dict[str, Any]]:
     return out
 
 
+# Stats whose CAPI multiplier isn't a clean (1 + fraction) scaling, so they
+# don't fit the linear quality model: resistances combine non-linearly, and the
+# *_Addition stats are absolute amounts. Excluded from the quality estimate — at
+# low grades a resistance can land inside the sane window and skew the median.
+_QUALITY_SKIP = {"KineticResistance", "ThermicResistance", "ExplosiveResistance",
+                 "DefenceModifierHealthAddition"}
+
+
 def _capi_quality(blueprint: Optional[str], grade: Any, wip: Any) -> Optional[float]:
     """Estimate blueprint quality (0..1) from the live stat multipliers. CAPI
     doesn't report quality, but a roll scales each stat linearly between its
     grade minimum and maximum, so quality = (value - min) / (max - min) for any
-    varying stat. We compute that for every stat we can match, drop differently-
-    scaled outliers (resistances land far outside 0..1), and take the median.
-    Returns None when nothing usable matches (unknown blueprint, or a blueprint
-    whose only varying stats are resistances). The result is an estimate — it can
-    differ from the journal's exact quality by a little."""
+    varying stat. We compute that for every clean stat we can match, drop
+    differently-scaled outliers, and take the median. Returns None when nothing
+    usable matches (unknown blueprint, or one whose only varying stats are
+    resistances). The result is an estimate — it can differ from the journal's
+    exact quality by a little."""
     ranges = _BP_QUALITY_RANGES.get(blueprint or "", {}).get(str(grade))
     if not ranges or not isinstance(wip, dict):
         return None
@@ -406,6 +414,8 @@ def _capi_quality(blueprint: Optional[str], grade: Any, wip: Any) -> Optional[fl
         if not isinstance(info, dict):
             continue
         label = field[len(_OFT_PREFIX):] if field.startswith(_OFT_PREFIX) else field
+        if label in _QUALITY_SKIP:
+            continue
         rng = ranges.get(label)
         mult = info.get("value")
         if not rng or not isinstance(mult, (int, float)):
@@ -424,27 +434,55 @@ def _capi_quality(blueprint: Optional[str], grade: Any, wip: Any) -> Optional[fl
     return round(min(1.0, max(0.0, median)), 3)
 
 
-def _capi_engineering(slot: dict[str, Any]) -> Optional[dict[str, Any]]:
+def _capi_engineering(slot: dict[str, Any],
+                      journal_engineer: Optional[str] = None) -> Optional[dict[str, Any]]:
     """Normalise a CAPI slot's engineering into the same summary shape the
-    journal path emits (_engineering_summary). Returns None for an un-engineered
-    module (one with no 'engineer' block). 'quality' is an *estimate* — CAPI
-    doesn't report it (see _capi_quality)."""
+    journal path emits (_engineering_summary), returning None for an un-engineered
+    module (no 'engineer' block).
+
+    Field sources reflect which path is authoritative for each: CAPI is the
+    fresher source for the roll-volatile fields (grade, quality, modifiers), so
+    those come from CAPI. For engineer, CAPI reports the *last* engineer to roll
+    the module, which drifts when it's re-rolled at a remote workshop — so we
+    prefer the originating engineer from the journal (passed in by the caller
+    when the slot still holds the same mod) and expose CAPI's under
+    engineer_last_roll.
+
+    'quality' is an *estimate* (CAPI omits it; see _capi_quality);
+    'quality_estimated' is True only for the quality field, and only when a value
+    was actually derived."""
     eng = slot.get("engineer")
     if not isinstance(eng, dict):
         return None
+    capi_engineer = eng.get("engineerName")
+    quality = _capi_quality(eng.get("recipeName"), eng.get("recipeLevel"),
+                            slot.get("WorkInProgress_modifications"))
     return {
         "blueprint": eng.get("recipeName"),   # raw codename, exactly as the journal stores it
         "grade": eng.get("recipeLevel"),
-        "quality": _capi_quality(eng.get("recipeName"), eng.get("recipeLevel"),
-                                 slot.get("WorkInProgress_modifications")),
-        "quality_estimated": True,             # CAPI omits quality; this is derived from the roll
-        "engineer": eng.get("engineerName"),
+        "quality": quality,
+        "quality_estimated": quality is not None,
+        "engineer": journal_engineer or capi_engineer,
+        "engineer_last_roll": capi_engineer,
         "experimental_effect": _capi_special_effect(slot.get("specialModifications")),
         "modifiers": _capi_modifiers(slot.get("WorkInProgress_modifications")),
     }
 
 
-def _capi_current_ship(ship: dict[str, Any]) -> dict[str, Any]:
+def _capi_current_ship(ship: dict[str, Any],
+                       journal_loadout: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+    # Map slot -> (item, blueprint, engineer) from the cached journal Loadout, so
+    # _capi_engineering can prefer the journal's originating engineer over CAPI's
+    # last-roll one — but only when the slot still holds the same engineered mod
+    # (same item and blueprint), otherwise the journal entry is stale/unrelated.
+    j_eng: dict[str, tuple] = {}
+    if isinstance(journal_loadout, dict):
+        for jm in journal_loadout.get("Modules", []):
+            je = jm.get("Engineering") or {}
+            name = je.get("Engineer")
+            if name:
+                j_eng[jm.get("Slot")] = (jm.get("Item"), je.get("BlueprintName"), name)
+
     modules = []
     for slot, entry in (ship.get("modules") or {}).items():
         mod = entry.get("module") if isinstance(entry, dict) else None
@@ -452,17 +490,22 @@ def _capi_current_ship(ship: dict[str, Any]) -> dict[str, Any]:
             continue
         health = mod.get("health")
         name = mod.get("name")
+        # Lower-case to match the journal path (the game emits lower-case item
+        # names there; CAPI uses PascalCase).
+        item = name.lower() if isinstance(name, str) else name
+        capi_eng = entry.get("engineer") if isinstance(entry.get("engineer"), dict) else {}
+        j = j_eng.get(slot)
+        journal_engineer = (
+            j[2] if (j and j[0] == item and j[1] == capi_eng.get("recipeName")) else None)
         modules.append({
             "slot": slot,
-            # Lower-case to match the journal path (the game emits lower-case item
-            # names there; CAPI uses PascalCase).
-            "item": name.lower() if isinstance(name, str) else name,
+            "item": item,
             "on": mod.get("on"),
             "priority": mod.get("priority"),
             # CAPI reports health on a 0..1000000 scale; the journal uses 0..1.
             "health": health / 1_000_000 if isinstance(health, (int, float)) else health,
             "value": mod.get("value"),
-            "engineering": _capi_engineering(entry),
+            "engineering": _capi_engineering(entry, journal_engineer),
         })
     value = ship.get("value")
     return {
@@ -777,7 +820,10 @@ class _Connector:
                     "system": (data.get("lastSystem") or {}).get("name"),
                     "station": (data.get("lastStarport") or {}).get("name"),
                 },
-                "current_ship": _capi_current_ship(ship) if ship else None,
+                # Pass the cached journal Loadout for this ship so engineer
+                # provenance can be merged in (see _capi_current_ship).
+                "current_ship": _capi_current_ship(
+                    ship, self.loadouts.get(ship.get("id"))) if ship else None,
                 "fleet": _capi_fleet(data.get("ships")),
             }
         self._pending_nonce = None

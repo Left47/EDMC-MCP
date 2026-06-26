@@ -234,6 +234,33 @@ SAMPLE_CAPI = {
                     "OutfittingFieldType_PowerCapacity": {
                         "value": 1.365, "LessIsGood": False, "displayValue": "36.50%"}},
                 "specialModifications": []},  # engineered, but no experimental effect
+            # Same mod as the journal's Slot01_Size7 (item + blueprint match) but
+            # re-rolled at a remote workshop by Mel Brandon -> engineer should come
+            # from the journal (Lei Cheung), engineer_last_roll from CAPI.
+            "Slot01_Size7": {
+                "module": {"name": "Int_ShieldGenerator_Size7_Class5_Strong", "on": True,
+                           "priority": 1, "health": 1000000, "value": 8000000},
+                "engineer": {"engineerName": "Mel Brandon", "engineerId": 300280,
+                             "recipeName": "ShieldGenerator_Reinforced", "recipeLevel": 5},
+                "WorkInProgress_modifications": {
+                    # +35% optimal strength = halfway through G5's 32%..38% -> quality 0.5
+                    "OutfittingFieldType_ShieldGenStrength": {
+                        "value": 1.35, "LessIsGood": False, "displayValue": "35.00%"},
+                    # A resistance whose naive q (0.9) would skew the median if not skipped.
+                    "OutfittingFieldType_ThermicResistance": {
+                        "value": 1.162, "LessIsGood": False, "displayValue": "16.20%"}},
+                "specialModifications": {"special_shield_regenerative": "special_shield_regenerative"}},
+            # Engineered with a blueprint not in the quality table -> quality can't
+            # be estimated: quality null AND quality_estimated false (not contradictory).
+            "Slot09_Size1": {
+                "module": {"name": "Int_DetailedSurfaceScanner_Tiny", "on": True,
+                           "priority": 0, "health": 1000000, "value": 250000},
+                "engineer": {"engineerName": "Lori Jameson", "engineerId": 300100,
+                             "recipeName": "Sensor_Expanded", "recipeLevel": 5},
+                "WorkInProgress_modifications": {
+                    "OutfittingFieldType_DSS_PatchRadius": {
+                        "value": 1.2, "LessIsGood": False, "displayValue": "20.00%"}},
+                "specialModifications": []},
             "MainEngines": {"module": {
                 "name": "Int_Engine_Size7_Class5", "on": True, "priority": 0,
                 "health": 1000000}},  # not engineered: no 'engineer' block
@@ -263,7 +290,7 @@ capi_ship = capi.get("current_ship") or {}
 check("capi current ship captured", capi_ship.get("type") == "federation_corvette",
       str(capi_ship.get("type")))
 check("capi engineering captured",
-      capi_ship.get("engineered_module_count") == 2,
+      capi_ship.get("engineered_module_count") == 4,
       str(capi_ship.get("engineered_module_count")))
 capi_mods = {m["slot"]: m for m in capi_ship.get("modules", [])}
 # CAPI engineering is normalised to the same summary shape as the journal path.
@@ -272,8 +299,30 @@ fsd_eng = capi_fsd.get("engineering") or {}
 check("capi FSD blueprint matches journal codename", fsd_eng.get("blueprint") == "FSD_LongRange",
       str(fsd_eng.get("blueprint")))
 check("capi FSD grade", fsd_eng.get("grade") == 5, str(fsd_eng.get("grade")))
+# No journal FSD in the loadout -> engineer falls back to CAPI for both fields.
 check("capi FSD engineer name resolved", fsd_eng.get("engineer") == "Mel Brandon",
       str(fsd_eng.get("engineer")))
+check("capi FSD engineer_last_roll", fsd_eng.get("engineer_last_roll") == "Mel Brandon",
+      str(fsd_eng.get("engineer_last_roll")))
+# Engineer provenance: journal slot matches by item+blueprint, so engineer comes
+# from the journal (Lei Cheung) while engineer_last_roll keeps CAPI's (Mel Brandon).
+sh_eng = (capi_mods.get("Slot01_Size7", {}).get("engineering")) or {}
+check("capi engineer from journal provenance", sh_eng.get("engineer") == "Lei Cheung",
+      str(sh_eng.get("engineer")))
+check("capi engineer_last_roll from CAPI", sh_eng.get("engineer_last_roll") == "Mel Brandon",
+      str(sh_eng.get("engineer_last_roll")))
+check("capi quality skips resistances (no median skew)", sh_eng.get("quality") == 0.5,
+      str(sh_eng.get("quality")))
+# Blueprint differs from journal's PowerPlant (Boosted vs Armoured) -> no merge,
+# engineer stays CAPI's.
+pp_engineer = (capi_mods.get("PowerPlant", {}).get("engineering") or {}).get("engineer")
+check("capi no merge when blueprint differs", pp_engineer == "Etienne Dorn", str(pp_engineer))
+# Unknown blueprint -> quality null and NOT flagged estimated (issue: was contradictory).
+dss_eng = (capi_mods.get("Slot09_Size1", {}).get("engineering")) or {}
+check("capi unknown-blueprint quality is null", dss_eng.get("quality") is None,
+      str(dss_eng.get("quality")))
+check("capi null quality not flagged estimated", dss_eng.get("quality_estimated") is False,
+      str(dss_eng.get("quality_estimated")))
 check("capi FSD experimental friendly name", fsd_eng.get("experimental_effect") == "Mass Manager",
       str(fsd_eng.get("experimental_effect")))
 check("capi quality estimated from roll (FSD G5 maxed)", fsd_eng.get("quality") == 1.0,

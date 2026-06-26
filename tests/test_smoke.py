@@ -200,6 +200,11 @@ check("engineer status filter (unlocked)",
 # was stopped earlier, so the simulated plugin flushes explicitly.
 import threading  # noqa: E402
 
+# Mirrors the real Frontier CAPI /profile shape: engineering hangs off the SLOT
+# entry (sibling of "module"), the engineer block carries the name + recipe,
+# specialModifications is {codename: codename} (or [] when none), and
+# WorkInProgress_modifications gives per-stat multipliers. Item names are
+# PascalCase and health is 0..1000000 — the plugin normalises both.
 SAMPLE_CAPI = {
     "commander": {"name": "CMDR Jim", "credits": 1234567890, "docked": True},
     "lastSystem": {"name": "Shinrarta Dezhra"},
@@ -208,14 +213,30 @@ SAMPLE_CAPI = {
         "id": 7, "name": "federation_corvette", "shipName": "Bishop", "shipID": "JT-01",
         "value": {"total": 108000000},
         "modules": {
-            "PowerPlant": {"module": {
-                "name": "int_powerplant_size8_class5", "on": True, "priority": 0,
-                "health": 1000000, "engineer": {"engineerName": "Hera Tani"},
-                "recipeName": "PowerPlant_Armoured",
-                "modifications": {"integrity": 220.0}}},
+            "FrameShiftDrive": {
+                "module": {"name": "Int_Hyperdrive_Size5_Class5", "on": True,
+                           "priority": 0, "health": 1000000, "value": 5103953},
+                "engineer": {"engineerName": "Mel Brandon", "engineerId": 300280,
+                             "recipeName": "FSD_LongRange", "recipeLevel": 5},
+                "WorkInProgress_modifications": {
+                    "OutfittingFieldType_FSDOptimalMass": {
+                        "value": 1.55, "LessIsGood": False, "displayValue": "55.00%"},
+                    "OutfittingFieldType_Mass": {
+                        "value": 1.3, "LessIsGood": True, "displayValue": "-30.00%"}},
+                "specialModifications": {"special_fsd_heavy": "special_fsd_heavy"}},
+            "PowerPlant": {
+                "module": {"name": "Int_Powerplant_Size8_Class5", "on": True,
+                           "priority": 0, "health": 1000000, "value": 12971097},
+                "engineer": {"engineerName": "Etienne Dorn", "engineerId": 300290,
+                             "recipeName": "PowerPlant_Boosted", "recipeLevel": 5},
+                "WorkInProgress_modifications": {
+                    # +36.5% lands halfway through G5's 33%..40% range -> quality ~0.5
+                    "OutfittingFieldType_PowerCapacity": {
+                        "value": 1.365, "LessIsGood": False, "displayValue": "36.50%"}},
+                "specialModifications": []},  # engineered, but no experimental effect
             "MainEngines": {"module": {
-                "name": "int_engine_size7_class5", "on": True, "priority": 0,
-                "health": 1000000}},
+                "name": "Int_Engine_Size7_Class5", "on": True, "priority": 0,
+                "health": 1000000}},  # not engineered: no 'engineer' block
         },
     },
     "ships": {"7": {"id": 7, "name": "federation_corvette", "shipName": "Bishop",
@@ -238,11 +259,43 @@ capi_res = srv.request_capi_refresh(wait_seconds=12)
 t.join(timeout=15)
 check("capi refresh refreshed", capi_res["status"] == "refreshed", str(capi_res.get("status")))
 capi = capi_res.get("capi", {})
-check("capi current ship captured", (capi.get("current_ship") or {}).get("type") == "federation_corvette",
-      str((capi.get("current_ship") or {}).get("type")))
+capi_ship = capi.get("current_ship") or {}
+check("capi current ship captured", capi_ship.get("type") == "federation_corvette",
+      str(capi_ship.get("type")))
 check("capi engineering captured",
-      (capi.get("current_ship") or {}).get("engineered_module_count") == 1,
-      str((capi.get("current_ship") or {}).get("engineered_module_count")))
+      capi_ship.get("engineered_module_count") == 2,
+      str(capi_ship.get("engineered_module_count")))
+capi_mods = {m["slot"]: m for m in capi_ship.get("modules", [])}
+# CAPI engineering is normalised to the same summary shape as the journal path.
+capi_fsd = capi_mods.get("FrameShiftDrive", {})
+fsd_eng = capi_fsd.get("engineering") or {}
+check("capi FSD blueprint matches journal codename", fsd_eng.get("blueprint") == "FSD_LongRange",
+      str(fsd_eng.get("blueprint")))
+check("capi FSD grade", fsd_eng.get("grade") == 5, str(fsd_eng.get("grade")))
+check("capi FSD engineer name resolved", fsd_eng.get("engineer") == "Mel Brandon",
+      str(fsd_eng.get("engineer")))
+check("capi FSD experimental friendly name", fsd_eng.get("experimental_effect") == "Mass Manager",
+      str(fsd_eng.get("experimental_effect")))
+check("capi quality estimated from roll (FSD G5 maxed)", fsd_eng.get("quality") == 1.0,
+      str(fsd_eng.get("quality")))
+check("capi quality flagged as estimated", fsd_eng.get("quality_estimated") is True,
+      str(fsd_eng.get("quality_estimated")))
+check("capi item lower-cased to match journal",
+      capi_fsd.get("item") == "int_hyperdrive_size5_class5", str(capi_fsd.get("item")))
+check("capi health normalised to 0..1", capi_fsd.get("health") == 1.0, str(capi_fsd.get("health")))
+check("capi modifiers carry stripped labels + multipliers",
+      any(m["label"] == "FSDOptimalMass" and m["multiplier"] == 1.55
+          for m in fsd_eng.get("modifiers", [])), str(fsd_eng.get("modifiers")))
+# Engineered module with no experimental effect ([] specialModifications) -> None.
+pp_eng = (capi_mods.get("PowerPlant", {}).get("engineering")) or {}
+check("capi engineered module w/o experimental -> None",
+      pp_eng.get("blueprint") == "PowerPlant_Boosted" and pp_eng.get("experimental_effect") is None,
+      str(pp_eng.get("experimental_effect")))
+check("capi partial quality estimate", pp_eng.get("quality") == 0.5, str(pp_eng.get("quality")))
+# Un-engineered module -> engineering is None.
+check("capi un-engineered module -> engineering None",
+      capi_mods.get("MainEngines", {}).get("engineering") is None,
+      str(capi_mods.get("MainEngines", {}).get("engineering")))
 check("capi fleet captured", len(capi.get("fleet") or []) == 1, str(len(capi.get("fleet") or [])))
 check("capi surfaced in get_status", (srv.get_status().get("capi") or {}).get("status") == "received")
 
